@@ -103,6 +103,27 @@ export default function TasksPage() {
   const toggleTask = async (id: string, current: boolean) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, dokonceno: !current } : t));
     await supabase.from('tasks').update({ dokonceno: !current }).eq('id', id);
+    if (!current) {
+      // označeno jako dokončené — smaž z kalendáře
+      await supabase.from('calendar_events').delete().eq('task_id', id);
+    } else {
+      // označeno jako nedokončené — obnov v kalendáři
+      const task = tasks.find(t => t.id === id);
+      if (task?.deadline) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('calendar_events').upsert({
+            user_id: user.id,
+            nazev: task.nazev,
+            typ: 'deadline',
+            datum: task.deadline.slice(0, 10),
+            cas_od: task.deadline.length >= 16 ? task.deadline.slice(11, 16) : null,
+            contact_id: task.contact_id || null,
+            task_id: id,
+          }, { onConflict: 'task_id' });
+        }
+      }
+    }
   };
 
   const deleteTask = async (id: string) => {

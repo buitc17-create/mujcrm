@@ -38,8 +38,8 @@ const plans = [
     badge: 'Nejoblíbenější',
     highlight: true,
     features: [
-      'Vše ze Start',
-      'Automatizace a úkoly',
+      'Vše z plánu Start',
+      'Automatizace',
       'Základní reporting',
       'Kalendář a plánování',
       'Až 3 členové týmu',
@@ -59,9 +59,9 @@ const plans = [
     badge: null,
     highlight: false,
     features: [
-      'Vše ze Start a Tým',
-      'Pokročilý reporting s cíli',
-      'Export dat',
+      'Vše z plánů Start a Tým',
+      'Pokročilý reporting s KPI',
+      'Export dat do CSV',
       'Prioritní podpora',
       'Až 10 členů týmu',
     ],

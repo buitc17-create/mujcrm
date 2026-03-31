@@ -16,8 +16,9 @@ const plans = [
     badge: null,
     highlight: false,
     features: [
-      'CRM — správa kontaktů a firem',
-      'E-mailová komunikace',
+      'Správa kontaktů a firem',
+      'Integrovaná e-mailová schránka',
+      'Úkoly, aktivity a follow-upy',
       'Správa leadů a obchodů',
       'Kanban pipeline',
       'Základní přehledy a statistiky',

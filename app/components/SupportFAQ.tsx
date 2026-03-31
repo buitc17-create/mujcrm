@@ -13,6 +13,7 @@ const channels = [
     desc: 'Odpovídáme do 5 minut v pracovní době.',
     accent: '#00BFFF',
     cta: 'Zahájit chat',
+    href: '#kontakt',
   },
   {
     icon: (
@@ -25,6 +26,7 @@ const channels = [
     desc: 'Detailní dotazy vyřešíme do 24 hodin.',
     accent: '#7B2FFF',
     cta: 'Napsat e-mail',
+    href: 'mailto:info@mujcrm.cz',
   },
   {
     icon: (
@@ -37,6 +39,7 @@ const channels = [
     desc: 'Stovky návodů a videí pro samostatné řešení.',
     accent: '#00BFFF',
     cta: 'Procházet návody',
+    href: '/znalostni-baze',
   },
 ];
 
@@ -106,7 +109,7 @@ export default function SupportFAQ() {
                   <p className="text-xs" style={{ color: 'rgba(237,237,237,0.5)' }}>{ch.desc}</p>
                 </div>
                 <a
-                  href="#"
+                  href={ch.href}
                   className="text-xs font-semibold flex-shrink-0 mt-0.5 transition-colors"
                   style={{ color: ch.accent }}
                 >

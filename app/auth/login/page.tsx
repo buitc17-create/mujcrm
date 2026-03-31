@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
@@ -11,6 +11,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('reset') === 'success') setResetSuccess(true);
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +73,16 @@ export default function LoginPage() {
           <span className="font-bold text-xl text-white">Muj<span style={{ color: '#00BFFF' }}>CRM</span></span>
         </a>
 
+        {resetSuccess && (
+          <div className="mb-4 px-4 py-3 rounded-xl flex items-center gap-2.5 text-sm font-semibold"
+            style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22C55E' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Heslo bylo úspěšně změněno. Přihlaste se novým heslem.
+          </div>
+        )}
+
         <div className="rounded-2xl p-8"
           style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <h1 className="text-2xl font-bold text-white mb-1">Přihlásit se</h1>
@@ -113,7 +131,7 @@ export default function LoginPage() {
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold" style={{ color: 'rgba(237,237,237,0.6)' }}>Heslo</label>
-                <a href="#" className="text-xs" style={{ color: '#00BFFF' }}>Zapomenuté heslo?</a>
+                <a href="/auth/reset-password" className="text-xs" style={{ color: '#00BFFF' }}>Zapomenuté heslo?</a>
               </div>
               <input
                 type="password" required value={password}

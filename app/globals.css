@@ -118,6 +118,40 @@ body {
   transform: translateY(-1px);
 }
 
+.link-muted {
+  color: rgba(237,237,237,0.4);
+  transition: color 0.2s;
+}
+.link-muted:hover {
+  color: #00BFFF;
+}
+.link-back {
+  color: rgba(237,237,237,0.5);
+  transition: color 0.2s;
+}
+.link-back:hover {
+  color: #00BFFF;
+}
+.toc-link {
+  color: rgba(237,237,237,0.5);
+  border-left: 2px solid rgba(255,255,255,0.07);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.toc-link:hover {
+  color: #00BFFF;
+  border-left-color: #00BFFF;
+  background: rgba(0,191,255,0.05);
+}
+.related-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.07);
+  transition: border-color 0.15s, background 0.15s;
+}
+.related-card:hover {
+  border-color: rgba(0,191,255,0.2);
+  background: rgba(0,191,255,0.04);
+}
+
 .btn-outline {
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: #ededed;

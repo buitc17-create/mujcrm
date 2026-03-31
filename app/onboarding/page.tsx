@@ -147,7 +147,7 @@ export default function OnboardingPage() {
     if (!selected) return;
     if (isLast) {
       setSaving(true);
-      sessionStorage.setItem('onboarding_answers', JSON.stringify({ ...answers, [current.key]: selected }));
+      localStorage.setItem('onboarding_answers', JSON.stringify({ ...answers, [current.key]: selected }));
       router.push('/auth/register');
     } else {
       setStep(s => s + 1);

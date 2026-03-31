@@ -28,8 +28,8 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
 
-  const publicRoutes = ['/', '/auth/login', '/auth/register', '/auth/callback', '/onboarding'];
-  const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith('/auth/') || pathname.startsWith('/onboarding'));
+  const publicRoutes = ['/', '/auth/login', '/auth/register', '/auth/callback', '/onboarding', '/gdpr', '/podminky', '/zasady-soukromi', '/znalostni-baze'];
+  const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith('/auth/') || pathname.startsWith('/onboarding') || pathname.startsWith('/blog'));
 
   // Unauthenticated user tries to access protected route
   if (!user && !isPublic) {

@@ -23,14 +23,14 @@ export default function RegisterPage() {
     setLoading(true);
 
     // Načteme onboarding odpovědi uložené před registrací
-    const onboardingRaw = sessionStorage.getItem('onboarding_answers');
+    const onboardingRaw = localStorage.getItem('onboarding_answers');
     const onboardingAnswers = onboardingRaw ? JSON.parse(onboardingRaw) : null;
 
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: name, onboarding: onboardingAnswers },
+        data: { full_name: name },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -40,8 +40,15 @@ export default function RegisterPage() {
     } else {
       // Pokud je user okamžitě přihlášen (auto-confirm), uložíme onboarding do DB
       if (data.user && onboardingAnswers) {
-        await supabase.from('onboarding').upsert({ user_id: data.user.id, ...onboardingAnswers, completed: true });
-        sessionStorage.removeItem('onboarding_answers');
+        await supabase.from('onboarding_answers').upsert({
+          user_id: data.user.id,
+          role: onboardingAnswers.role,
+          industry: onboardingAnswers.industry,
+          team_size: onboardingAnswers.team_size,
+          crm_goal: onboardingAnswers.use_case,
+          main_goal: onboardingAnswers.goal,
+        });
+        localStorage.removeItem('onboarding_answers');
       }
       setSuccess(true);
     }

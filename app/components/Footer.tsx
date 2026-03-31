@@ -1,17 +1,17 @@
 'use client';
 
 const navLinks = [
-  { label: 'Funkce', href: '#' },
-  { label: 'Ceník', href: '#' },
-  { label: 'Blog', href: '#' },
-  { label: 'Kontakt', href: '#' },
+  { label: 'Funkce', href: '/#funkce' },
+  { label: 'Ceník', href: '/#pricing' },
+  { label: 'Blog', href: '/blog' },
+  { label: 'Kontakt', href: '/#kontakt' },
 ];
 
 const supportLinks = [
-  { label: 'FAQ', href: '#' },
-  { label: 'Znalostní báze', href: '#' },
-  { label: 'GDPR', href: '#' },
-  { label: 'Podmínky použití', href: '#' },
+  { label: 'FAQ', href: '/#podpora' },
+  { label: 'Znalostní báze', href: '/znalostni-baze' },
+  { label: 'GDPR', href: '/gdpr' },
+  { label: 'Podmínky použití', href: '/podminky' },
 ];
 
 export default function Footer() {
@@ -108,12 +108,12 @@ export default function Footer() {
             © 2026 MujCRM s.r.o. Všechna práva vyhrazena.
           </p>
           <div className="flex items-center gap-5">
-            <a href="#" className="text-xs transition-colors" style={{ color: 'rgba(237,237,237,0.3)' }}
+            <a href="/zasady-soukromi" className="text-xs transition-colors" style={{ color: 'rgba(237,237,237,0.3)' }}
               onMouseEnter={e => (e.currentTarget.style.color = 'rgba(237,237,237,0.7)')}
               onMouseLeave={e => (e.currentTarget.style.color = 'rgba(237,237,237,0.3)')}>
               Zásady soukromí
             </a>
-            <a href="#" className="text-xs transition-colors" style={{ color: 'rgba(237,237,237,0.3)' }}
+            <a href="/podminky" className="text-xs transition-colors" style={{ color: 'rgba(237,237,237,0.3)' }}
               onMouseEnter={e => (e.currentTarget.style.color = 'rgba(237,237,237,0.7)')}
               onMouseLeave={e => (e.currentTarget.style.color = 'rgba(237,237,237,0.3)')}>
               Podmínky služby

@@ -156,7 +156,7 @@ export default function ContactForm() {
               </div>
               <span className="text-xs leading-relaxed" style={{ color: 'rgba(237,237,237,0.5)' }}>
                 Souhlasím se zpracováním osobních údajů dle{' '}
-                <a href="#" style={{ color: '#00BFFF' }} className="underline underline-offset-2">
+                <a href="/zasady-soukromi" style={{ color: '#00BFFF' }} className="underline underline-offset-2">
                   Zásad ochrany soukromí
                 </a>{' '}
                 za účelem odpovědi na můj dotaz.

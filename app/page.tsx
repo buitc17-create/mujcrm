@@ -1,3 +1,11 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "https://mujcrm.vercel.app",
+  },
+};
+
 import AnnouncementBar from './components/AnnouncementBar';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -27,11 +35,11 @@ export default function Home() {
           <DashboardMock />
           <HowItWorks />
           <ForWho />
-          <Features />
+          <section id="funkce"><Features /></section>
           <Testimonials />
-          <Pricing />
-          <SupportFAQ />
-          <ContactForm />
+          <section id="pricing"><Pricing /></section>
+          <section id="podpora"><SupportFAQ /></section>
+          <section id="kontakt"><ContactForm /></section>
         </main>
         <Footer />
       </div>

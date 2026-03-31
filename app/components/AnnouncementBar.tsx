@@ -9,7 +9,7 @@ export default function AnnouncementBar() {
         borderBottom: '1px solid rgba(0,191,255,0.15)',
       }}
     >
-      <span>🎁 7 dní Medium zdarma — vyzkoušej všechny funkce bez platební karty</span>
+      <span>🎁 7 dní Business plánu zdarma — vyzkoušej všechny funkce bez platební karty</span>
       <span className="mx-3 opacity-40">|</span>
       <a
         href="/onboarding"

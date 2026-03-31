@@ -46,7 +46,7 @@ const channels = [
 const faqs = [
   {
     q: 'Musím zadávat platební kartu při registraci?',
-    a: 'Ne. Trial 7 dní Medium plánu je zcela zdarma a bez platební karty. Kartu zadáš až pokud se rozhodneš pokračovat v placeném tarifu.',
+    a: 'Ne. Zkušební období 7 dní Business plánu je zcela zdarma a bez platební karty. Kartu zadáš až v případě, že se rozhodneš pokračovat v placeném tarifu.',
   },
   {
     q: 'Mohu kdykoliv zrušit předplatné?',
@@ -62,7 +62,7 @@ const faqs = [
   },
   {
     q: 'Co se stane po skončení zkušební doby?',
-    a: 'Po 7 dnech se účet automaticky přepne na Free plán — neztratíte data ani přístup. Upgrade na placený plán je na vás, neúčtujeme nic bez vašeho souhlasu.',
+    a: 'Po 7 dnech se účet automaticky přepne na plán Start — neztratíte data ani přístup. Přechod na vyšší plán je na vás, neúčtujeme nic bez vašeho souhlasu.',
   },
 ];
 

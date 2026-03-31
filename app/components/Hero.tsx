@@ -16,7 +16,7 @@ const trustBadges = [
     ),
   },
   {
-    title: '7 dní Medium zdarma',
+    title: '7 dní Business plánu zdarma',
     icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00BFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="8" width="18" height="13" rx="2" />

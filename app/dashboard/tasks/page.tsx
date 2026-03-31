@@ -117,7 +117,6 @@ export default function TasksPage() {
     setSaving(true);
 
     if (editTask) {
-      // UPDATE
       const { data } = await supabase.from('tasks')
         .update({
           nazev: form.nazev.trim(),
@@ -128,15 +127,25 @@ export default function TasksPage() {
         .eq('id', editTask.id)
         .select('id, nazev, popis, deadline, dokonceno, contact_id, created_at, contacts(jmeno, prijmeni)')
         .single();
-
       if (data) {
         setTasks(prev => prev.map(t => t.id === editTask.id ? (data as unknown as Task) : t));
+        if (form.deadline) {
+          await supabase.from('calendar_events').upsert({
+            nazev: form.nazev.trim(),
+            typ: 'deadline',
+            datum: form.deadline.slice(0, 10),
+            cas_od: form.deadline.length >= 16 ? form.deadline.slice(11, 16) : null,
+            popis: form.popis.trim() || null,
+            contact_id: form.contact_id || null,
+            task_id: editTask.id,
+          }, { onConflict: 'task_id' });
+        } else {
+          await supabase.from('calendar_events').delete().eq('task_id', editTask.id);
+        }
       }
     } else {
-      // INSERT
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSaving(false); return; }
-
       const { data } = await supabase.from('tasks').insert({
         user_id: user.id,
         nazev: form.nazev.trim(),
@@ -145,10 +154,9 @@ export default function TasksPage() {
         contact_id: form.contact_id || null,
         dokonceno: false,
       }).select('id, nazev, popis, deadline, dokonceno, contact_id, created_at, contacts(jmeno, prijmeni)').single();
-
       if (data) {
-        setTasks(prev => [data as unknown as Task, ...prev]);
-        // Sync to calendar if deadline set (form.deadline = Czech local time from datetime-local input)
+        const newTask = data as unknown as Task;
+        setTasks(prev => [newTask, ...prev]);
         if (form.deadline) {
           await supabase.from('calendar_events').insert({
             user_id: user.id,
@@ -160,6 +168,7 @@ export default function TasksPage() {
             popis: form.popis.trim() || null,
             contact_id: form.contact_id || null,
             deal_id: null,
+            task_id: newTask.id,
           });
         }
       }

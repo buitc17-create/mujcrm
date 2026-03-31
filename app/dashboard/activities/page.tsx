@@ -193,7 +193,20 @@ export default function ActivitiesPage() {
       const { data } = await supabase.from('activities')
         .update(payload).eq('id', editActivity.id)
         .select(SELECT).single();
-      if (data) setActivities(prev => prev.map(a => a.id === editActivity.id ? (data as unknown as Activity) : a));
+      if (data) {
+        setActivities(prev => prev.map(a => a.id === editActivity.id ? (data as unknown as Activity) : a));
+        await supabase.from('calendar_events').upsert({
+          nazev: form.popis.trim(),
+          typ: form.typ,
+          datum: datum.slice(0, 10),
+          cas_od: form.cas_od || null,
+          cas_do: form.cas_do || null,
+          popis: form.misto ? `Místo: ${form.misto.trim()}` : null,
+          contact_id: form.contact_id || null,
+          deal_id: form.deal_id || null,
+          activity_id: editActivity.id,
+        }, { onConflict: 'activity_id' });
+      }
     } else {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSaving(false); return; }
@@ -201,8 +214,8 @@ export default function ActivitiesPage() {
         .insert({ user_id: user.id, ...payload })
         .select(SELECT).single();
       if (data) {
-        setActivities(prev => [data as unknown as Activity, ...prev]);
-        // Sync to calendar
+        const newActivity = data as unknown as Activity;
+        setActivities(prev => [newActivity, ...prev]);
         await supabase.from('calendar_events').insert({
           user_id: user.id,
           nazev: form.popis.trim(),
@@ -213,6 +226,7 @@ export default function ActivitiesPage() {
           popis: form.misto ? `Místo: ${form.misto.trim()}` : null,
           contact_id: form.contact_id || null,
           deal_id: form.deal_id || null,
+          activity_id: newActivity.id,
         });
       }
     }

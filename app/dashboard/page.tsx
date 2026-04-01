@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import GuidedTour from './GuidedTour';
 import TourButton from './TourButton';
+import TrialBanner from './TrialBanner';
 
 const tagColors: Record<string, string> = {
   zákazník: '#00BFFF',
@@ -42,6 +43,8 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/auth/login');
+
+  const { data: profile } = await supabase.from('profiles').select('plan, trial_ends_at').eq('id', user.id).single();
 
   const name = (user.user_metadata?.full_name as string)?.split(' ')[0]
     || user.email?.split('@')[0]
@@ -191,6 +194,8 @@ export default async function DashboardPage() {
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       <GuidedTour userName={name} />
+
+      <TrialBanner plan={profile?.plan ?? null} trialEndsAt={profile?.trial_ends_at ?? null} />
 
       {/* Welcome */}
       <div id="dashboard-welcome" className="flex items-start justify-between gap-4 mb-8">

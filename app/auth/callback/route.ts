@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -45,16 +46,72 @@ export async function GET(request: NextRequest) {
           new URL('/dashboard/settings?email=changed', requestUrl.origin)
         )
       }
+      if (type === 'invite') {
+        // Napoj člena týmu a přesměruj na nastavení hesla
+        const { data: { user: invitedUser } } = await supabase.auth.getUser()
+        if (invitedUser?.user_metadata?.owner_id) {
+          const adminClient = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          )
+          const memberId = invitedUser.user_metadata.team_member_id
+          if (memberId) {
+            await adminClient.from('team_members')
+              .update({ member_user_id: invitedUser.id, status: 'aktivni' })
+              .eq('id', memberId)
+          } else {
+            await adminClient.from('team_members')
+              .update({ member_user_id: invitedUser.id, status: 'aktivni' })
+              .eq('owner_id', invitedUser.user_metadata.owner_id)
+              .eq('member_email', invitedUser.email!)
+          }
+        }
+        return NextResponse.redirect(
+          new URL('/auth/update-password?invited=true', requestUrl.origin)
+        )
+      }
       return NextResponse.redirect(
         new URL('/dashboard', requestUrl.origin)
       )
     }
   }
 
-  // Zpracování code (OAuth, standardní flow)
+  // Zpracování code (OAuth, standardní flow, pozvánky, PKCE reset hesla)
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      // PKCE reset hesla — detekuj podle type v URL, next parametru, nebo podle Supabase session
+      const isRecovery = type === 'recovery'
+        || next === '/auth/update-password'
+        || sessionData?.user?.recovery_sent_at != null
+      if (isRecovery) {
+        return NextResponse.redirect(new URL('/auth/update-password', requestUrl.origin))
+      }
+
+      // Pokud jde o přijetí pozvánky do týmu — napoj člena
+      const invited = requestUrl.searchParams.get('invited') === 'true'
+      if (invited) {
+        const { data: { user: invitedUser } } = await supabase.auth.getUser()
+        if (invitedUser?.user_metadata?.owner_id) {
+          const adminClient = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          )
+          const memberId = invitedUser.user_metadata.team_member_id
+          if (memberId) {
+            await adminClient.from('team_members')
+              .update({ member_user_id: invitedUser.id, status: 'aktivni' })
+              .eq('id', memberId)
+          } else {
+            await adminClient.from('team_members')
+              .update({ member_user_id: invitedUser.id, status: 'aktivni' })
+              .eq('owner_id', invitedUser.user_metadata.owner_id)
+              .eq('member_email', invitedUser.email!)
+          }
+          // Nový člen musí nastavit heslo
+          return NextResponse.redirect(new URL('/auth/update-password?invited=true', requestUrl.origin))
+        }
+      }
       return NextResponse.redirect(new URL(next, requestUrl.origin))
     }
   }

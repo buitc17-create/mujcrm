@@ -12,11 +12,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [linkExpired, setLinkExpired] = useState(false);
+  const [nextUrl, setNextUrl] = useState('/dashboard');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('reset') === 'success') setResetSuccess(true);
+      if (params.get('error') === 'auth_error') setLinkExpired(true);
+      const next = params.get('next');
+      if (next) setNextUrl(next);
     }
   }, []);
 
@@ -29,14 +34,16 @@ export default function LoginPage() {
       setError('Nesprávný e-mail nebo heslo.');
       setLoading(false);
     } else {
-      router.push('/dashboard');
+      router.push(nextUrl);
     }
   };
 
   const handleGoogle = async () => {
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next') || '/dashboard';
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
     });
   };
 
@@ -80,6 +87,17 @@ export default function LoginPage() {
               <polyline points="20 6 9 17 4 12"/>
             </svg>
             Heslo bylo úspěšně změněno. Přihlaste se novým heslem.
+          </div>
+        )}
+
+        {linkExpired && (
+          <div className="mb-4 px-4 py-3 rounded-xl text-sm"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
+            <p className="font-semibold mb-1">Odkaz pro reset hesla vypršel nebo byl již použit.</p>
+            <p style={{ color: 'rgba(248,113,113,0.8)' }}>
+              Požádejte o nový odkaz na stránce{' '}
+              <a href="/auth/reset-password" style={{ color: '#00BFFF', fontWeight: 600 }}>Zapomenuté heslo</a>.
+            </p>
           </div>
         )}
 

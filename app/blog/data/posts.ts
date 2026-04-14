@@ -552,7 +552,7 @@ export const posts: Post[] = [
         type: 'ol',
         items: [
           'Zkontrolujte, zda váš CRM poskytovatel ukládá data v EU, ideálně na serverech v ČR nebo Německu.',
-          'Zjistěte, zda poskytovatel je GDPR compliant a má DPA (Data Processing Agreement).',
+          'Zjistěte, zda poskytovatel je GDPR compliant a ukládá data výhradně v EU.',
           'Nastavte v CRM doby uchování dat: po uplynutí doby data automaticky archivujte nebo smažte.',
           'Definujte právní základ pro každou kategorii kontaktů v CRM.',
           'Zaznamenejte souhlasy s marketingovou komunikací a jejich datum.',
@@ -575,7 +575,7 @@ export const posts: Post[] = [
       },
       {
         type: 'p',
-        text: 'MujCRM je navržen s ohledem na GDPR od základu. Data jsou uložena výhradně na serverech v EU (Frankfurt), šifrována při přenosu (TLS 1.3) i při uložení (AES-256). Uzavíráme s každým zákazníkem DPA (smlouvu o zpracování dat). Systém obsahuje nástroje pro správu souhlasů, export dat a smazání konkrétního zákazníka. Bezpečnost vašich zákaznických dat je naší prioritou, protože je to zároveň zákonná povinnost i základ důvěry.',
+        text: 'MujCRM je navržen s ohledem na GDPR od základu. Data jsou uložena výhradně na serverech v EU (Frankfurt), šifrována při přenosu (TLS 1.3) i při uložení (AES-256). Systém obsahuje nástroje pro správu souhlasů, export dat a smazání konkrétního zákazníka. Bezpečnost vašich zákaznických dat je naší prioritou, protože je to zároveň zákonná povinnost i základ důvěry.',
       },
     ],
   },

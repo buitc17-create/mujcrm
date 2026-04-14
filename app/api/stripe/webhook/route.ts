@@ -82,8 +82,7 @@ export async function POST(req: Request) {
       if ((invoice as Stripe.Invoice & { billing_reason?: string }).billing_reason !== 'subscription_cycle') break
 
       // Zjisti zda měl zákazník discount (promo kód) na předchozím cyklu
-      const prevAttrs = (event.data.previous_attributes ?? {}) as Record<string, unknown>
-      const hadDiscount = invoice.discount !== null || 'discount' in prevAttrs
+      const hadDiscount = (invoice.discounts && invoice.discounts.length > 0)
 
       if (!hadDiscount) break // Nebyl promo kód, email neposíláme
 

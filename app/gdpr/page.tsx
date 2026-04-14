@@ -5,7 +5,7 @@ export const metadata = {
   title: 'GDPR – Ochrana osobních údajů',
   description: 'Informace o zpracování osobních údajů v souladu s nařízením GDPR (EU 2016/679) a zákonem č. 110/2019 Sb. pro uživatele CRM systému MujCRM.',
   robots: { index: true, follow: true },
-  alternates: { canonical: 'https://mujcrm.vercel.app/gdpr' },
+  alternates: { canonical: 'https://www.mujcrm.cz/gdpr' },
 };
 
 function Breadcrumb({ current }: { current: string }) {
@@ -42,8 +42,9 @@ export default function GdprPage() {
           <Section title="1. Správce osobních údajů">
             <p>Správcem osobních údajů ve smyslu čl. 4 odst. 7 GDPR je:</p>
             <InfoBox>
-              <strong className="text-white">MujCRM s.r.o.</strong><br />
-              Se sídlem: Praha, Česká republika<br />
+              <strong className="text-white">Tomáš Vydra</strong><br />
+              IČO: 87149222<br />
+              Místo podnikání: K Vinařické hoře 1668, 273 09 Kladno<br />
               E-mail: <Link href="mailto:info@mujcrm.cz">info@mujcrm.cz</Link><br />
               Kontakt pro GDPR: <Link href="mailto:info@mujcrm.cz">info@mujcrm.cz</Link>
             </InfoBox>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import DateTimePicker from '@/app/components/DateTimePicker';
 
 type CalEvent = {
   id: string; nazev: string; typ: string; datum: string;
@@ -96,7 +97,18 @@ function weekDays(d: Date): Date[] {
   return Array.from({ length: 7 }, (_, i) => addDays(mon, i));
 }
 
-const emptyForm = { nazev: '', typ: 'schuzka', datum: '', cas_od: '', cas_do: '', popis: '', contact_id: '', deal_id: '' };
+const REMINDER_OPTIONS = [
+  { value: '', label: '— Bez připomínky —' },
+  { value: '15', label: '15 minut předem' },
+  { value: '30', label: '30 minut předem' },
+  { value: '60', label: '1 hodinu předem' },
+  { value: '120', label: '2 hodiny předem' },
+  { value: '1440', label: '1 den předem' },
+  { value: '2880', label: '2 dny předem' },
+];
+
+type TeamMember = { id: string; name: string; email: string; role: string; isOwner: boolean };
+const emptyForm = { nazev: '', typ: 'schuzka', datum: '', cas_od: '', cas_do: '', popis: '', contact_id: '', deal_id: '', reminder: '', assigned_to: '' };
 
 export default function CalendarPage() {
   const supabase = createClient();
@@ -115,6 +127,7 @@ export default function CalendarPage() {
   const [editEvent, setEditEvent] = useState<CalEvent | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   const year = curDate.getFullYear();
   const month = curDate.getMonth();
@@ -136,6 +149,7 @@ export default function CalendarPage() {
     if (contacts.length === 0) {
       supabase.from('contacts').select('id, jmeno, prijmeni').order('jmeno').then(({ data }) => setContacts(data ?? []));
       supabase.from('deals').select('id, nazev').order('nazev').then(({ data }) => setDeals((data as Deal[]) ?? []));
+      fetch('/api/team/members').then(r => r.json()).then(d => setTeamMembers(d.members ?? []));
     }
   }, [curDate, view]);
 
@@ -187,9 +201,25 @@ export default function CalendarPage() {
     setForm({ ...emptyForm, datum: dateStr, cas_od });
     setShowModal(true);
   };
-  const openEdit = (e: CalEvent) => {
+  const openEdit = async (e: CalEvent) => {
     setEditEvent(e);
-    setForm({ nazev: e.nazev, typ: e.typ, datum: e.datum, cas_od: e.cas_od ?? '', cas_do: e.cas_do ?? '', popis: e.popis ?? '', contact_id: e.contact_id ?? '', deal_id: e.deal_id ?? '' });
+    let reminder = '';
+    if (e.cas_od) {
+      const { data: notif } = await supabase
+        .from('notification_queue')
+        .select('scheduled_at')
+        .eq('source_type', 'calendar_event')
+        .eq('source_id', e.id)
+        .eq('sent', false)
+        .maybeSingle();
+      if (notif?.scheduled_at) {
+        const eventTime = new Date(`${e.datum}T${e.cas_od}`);
+        const diff = Math.round((eventTime.getTime() - new Date(notif.scheduled_at).getTime()) / 60000);
+        const match = [15, 30, 60, 120, 1440, 2880].find(v => Math.abs(v - diff) < 5);
+        if (match) reminder = String(match);
+      }
+    }
+    setForm({ nazev: e.nazev, typ: e.typ, datum: e.datum, cas_od: e.cas_od ?? '', cas_do: e.cas_do ?? '', popis: e.popis ?? '', contact_id: e.contact_id ?? '', deal_id: e.deal_id ?? '', reminder, assigned_to: '' });
     setShowModal(true);
   };
   const closeModal = () => { setShowModal(false); setEditEvent(null); setForm(emptyForm); };
@@ -200,15 +230,48 @@ export default function CalendarPage() {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const payload = { nazev: form.nazev.trim(), typ: form.typ, datum: form.datum, cas_od: form.cas_od || null, cas_do: form.cas_do || null, popis: form.popis.trim() || null, contact_id: form.contact_id || null, deal_id: form.deal_id || null };
+    const payload = { nazev: form.nazev.trim(), typ: form.typ, datum: form.datum, cas_od: form.cas_od || null, cas_do: form.cas_do || null, popis: form.popis.trim() || null, contact_id: form.contact_id || null, deal_id: form.deal_id || null, assigned_to: form.assigned_to || null };
     if (editEvent) {
       const { data } = await supabase.from('calendar_events').update(payload).eq('id', editEvent.id)
         .select('id, nazev, typ, datum, cas_od, cas_do, popis, contact_id, deal_id, contacts(jmeno, prijmeni), deals(nazev)').single();
       if (data) setEvents(prev => prev.map(e => e.id === editEvent.id ? (data as unknown as CalEvent) : e));
+      // Update notification
+      await supabase.from('notification_queue').delete().eq('source_type', 'calendar_event').eq('source_id', editEvent.id).eq('sent', false);
+      if (form.reminder && form.datum && form.cas_od) {
+        const scheduledAt = new Date(new Date(`${form.datum}T${form.cas_od}`).getTime() - parseInt(form.reminder) * 60 * 1000);
+        if (scheduledAt > new Date()) {
+          await supabase.from('notification_queue').insert({
+            user_id: user.id,
+            title: form.nazev.trim(),
+            body: typeMeta(form.typ).label + (form.cas_od ? ` v ${form.cas_od}` : '') + ' — připomínka',
+            url: '/dashboard/calendar',
+            scheduled_at: scheduledAt.toISOString(),
+            source_type: 'calendar_event',
+            source_id: editEvent.id,
+          });
+        }
+      }
     } else {
       const { data } = await supabase.from('calendar_events').insert({ ...payload, user_id: user.id })
         .select('id, nazev, typ, datum, cas_od, cas_do, popis, contact_id, deal_id, contacts(jmeno, prijmeni), deals(nazev)').single();
-      if (data) setEvents(prev => [...prev, data as unknown as CalEvent].sort((a, b) => a.datum.localeCompare(b.datum)));
+      if (data) {
+        const newEvent = data as unknown as CalEvent;
+        setEvents(prev => [...prev, newEvent].sort((a, b) => a.datum.localeCompare(b.datum)));
+        if (form.reminder && form.datum && form.cas_od) {
+          const scheduledAt = new Date(new Date(`${form.datum}T${form.cas_od}`).getTime() - parseInt(form.reminder) * 60 * 1000);
+          if (scheduledAt > new Date()) {
+            await supabase.from('notification_queue').insert({
+              user_id: user.id,
+              title: form.nazev.trim(),
+              body: typeMeta(form.typ).label + (form.cas_od ? ` v ${form.cas_od}` : '') + ' — připomínka',
+              url: '/dashboard/calendar',
+              scheduled_at: scheduledAt.toISOString(),
+              source_type: 'calendar_event',
+              source_id: newEvent.id,
+            });
+          }
+        }
+      }
     }
     closeModal(); setSaving(false);
   };
@@ -632,8 +695,12 @@ export default function CalendarPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Datum *</label>
-                <input type="date" value={form.datum} onChange={e => setForm(p => ({ ...p, datum: e.target.value }))} style={{ ...inputStyle, colorScheme: 'dark' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')} onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+                <DateTimePicker
+                  value={form.datum}
+                  onChange={v => setForm(p => ({ ...p, datum: v }))}
+                  includeTime={false}
+                  placeholder="Vybrat datum"
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -647,6 +714,17 @@ export default function CalendarPage() {
                     onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')} onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
                 </div>
               </div>
+              {form.cas_od && (
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Připomínka</label>
+                  <select value={form.reminder} onChange={e => setForm(p => ({ ...p, reminder: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')} onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}>
+                    {REMINDER_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value} style={{ background: '#1a1a1a' }}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Popis</label>
                 <textarea placeholder="Poznámky…" rows={2} value={form.popis} onChange={e => setForm(p => ({ ...p, popis: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }}
@@ -666,6 +744,19 @@ export default function CalendarPage() {
                   {deals.map(d => <option key={d.id} value={d.id} style={{ background: '#1a1a1a' }}>{d.nazev}</option>)}
                 </select>
               </div>
+              {teamMembers.length > 1 && (
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Přiřadit členovi týmu</label>
+                  <select value={form.assigned_to} onChange={e => setForm(p => ({ ...p, assigned_to: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="" style={{ background: '#1a1a1a' }}>– Nepřiřazeno –</option>
+                    {teamMembers.map(m => (
+                      <option key={m.id} value={m.id} style={{ background: '#1a1a1a' }}>
+                        {m.name} {m.isOwner ? '(Admin)' : `(${m.role === 'clen' ? 'Člen' : m.role === 'cteni' ? 'Čtení' : m.role})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex gap-3 pt-1">
                 <button type="submit" disabled={saving}
                   className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-60"

@@ -110,7 +110,7 @@ export default function Hero() {
               className="w-1.5 h-1.5 rounded-full animate-pulse"
               style={{ background: '#00BFFF' }}
             />
-            CRM pro moderní české firmy
+            Jednoduchý CRM pro podnikatele a malé firmy
           </div>
 
           {/* Headline */}

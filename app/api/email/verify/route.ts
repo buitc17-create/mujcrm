@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
+import { encryptPassword } from '@/lib/emailCrypto';
 
 export async function POST(request: Request) {
   const { smtp_host, smtp_port, smtp_secure, smtp_user, smtp_password, imap_host, imap_port, imap_secure, display_name, signature } = await request.json();
@@ -31,10 +32,11 @@ export async function POST(request: Request) {
 
     await transporter.verify();
 
-    // Uložit do DB
+    // Uložit do DB — heslo zašifrujeme před zápisem
     await supabase.from('email_settings').upsert({
       user_id: user.id,
-      smtp_host, smtp_port, smtp_secure, smtp_user, smtp_password,
+      smtp_host, smtp_port, smtp_secure, smtp_user,
+      smtp_password: encryptPassword(smtp_password),
       imap_host, imap_port, imap_secure: imap_secure ?? true,
       display_name: display_name || smtp_user,
       signature: signature || null,

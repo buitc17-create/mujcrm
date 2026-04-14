@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { ImapFlow } from 'imapflow';
+import { decryptPassword } from '@/lib/emailCrypto';
 
 type Action = 'mark_read' | 'mark_unread' | 'flag' | 'unflag' | 'move_trash' | 'move_folder';
 
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
     host: settings.imap_host,
     port: settings.imap_port ?? 993,
     secure: settings.imap_secure ?? true,
-    auth: { user: settings.smtp_user, pass: settings.smtp_password },
+    auth: { user: settings.smtp_user, pass: decryptPassword(settings.smtp_password) },
     logger: false,
   });
 

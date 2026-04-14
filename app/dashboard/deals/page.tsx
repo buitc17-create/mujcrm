@@ -11,7 +11,8 @@ type Deal = {
   id: string; nazev: string; hodnota: number; status: string;
   stage_id: string | null;
   datum_uzavreni: string | null; contact_id: string | null; poznamky?: string | null;
-  priorita: string; pravdepodobnost: number; zdroj: string;
+  priorita: string; pravdepodobnost: number; zdroj: string; assigned_to?: string | null;
+  assignment_status?: string | null;
   contacts?: { jmeno: string; prijmeni: string | null; firma: string | null } | null;
 };
 type Contact = { id: string; jmeno: string; prijmeni: string | null; firma: string | null };
@@ -52,9 +53,10 @@ const ZDROJ = [
 function fmtKc(v: number) { return v ? v.toLocaleString('cs-CZ') + ' Kč' : '–'; }
 function priorityColor(p: string) { return PRIORITY.find(x => x.id === p)?.color ?? '#6b7280'; }
 
-const DEAL_SELECT = 'id, nazev, hodnota, status, stage_id, datum_uzavreni, contact_id, priorita, pravdepodobnost, zdroj, contacts(jmeno, prijmeni, firma)';
+const DEAL_SELECT = 'id, nazev, hodnota, status, stage_id, datum_uzavreni, contact_id, priorita, pravdepodobnost, zdroj, assigned_to, assignment_status, contacts(jmeno, prijmeni, firma)';
 
-const emptyForm = () => ({ nazev: '', hodnota: '', contact_id: '', datum_uzavreni: '', stage_id: '', priorita: 'stredni', pravdepodobnost: '50', zdroj: 'jine' });
+type TeamMember = { id: string; name: string; email: string; role: string; isOwner: boolean };
+const emptyForm = () => ({ nazev: '', hodnota: '', contact_id: '', datum_uzavreni: '', stage_id: '', priorita: 'stredni', pravdepodobnost: '50', zdroj: 'jine', assigned_to: '' });
 
 export default function DealsPage() {
   const supabase = createClient();
@@ -67,9 +69,15 @@ export default function DealsPage() {
   const [newDeal, setNewDeal] = useState(emptyForm());
 
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
-  const [editForm, setEditForm] = useState({ nazev: '', hodnota: '', stage_id: '', contact_id: '', datum_uzavreni: '', priorita: 'stredni', pravdepodobnost: '50', zdroj: 'jine' });
+  const [editForm, setEditForm] = useState({ nazev: '', hodnota: '', stage_id: '', contact_id: '', datum_uzavreni: '', priorita: 'stredni', pravdepodobnost: '50', zdroj: 'jine', assigned_to: '' });
   const [editSaving, setEditSaving] = useState(false);
 
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [isMember, setIsMember] = useState(false);
+  const [memberUserId, setMemberUserId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [actioningId, setActioningId] = useState<string | null>(null);
   const [showNewContact, setShowNewContact] = useState(false);
   const [newContact, setNewContact] = useState({ jmeno: '', prijmeni: '', email: '' });
   const [savingContact, setSavingContact] = useState(false);
@@ -88,7 +96,7 @@ export default function DealsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setSavingContact(false); return; }
     const { data } = await supabase.from('contacts').insert({
-      user_id: user.id,
+      user_id: ownerId ?? user.id,
       jmeno: newContact.jmeno.trim(),
       prijmeni: newContact.prijmeni.trim() || null,
       email: newContact.email.trim() || null,
@@ -125,7 +133,7 @@ export default function DealsPage() {
     if (!user) return;
     const poradi = items.length;
     const { data } = await supabase.from('deal_items').insert({
-      deal_id: selectedDeal.id, user_id: user.id,
+      deal_id: selectedDeal.id, user_id: ownerId ?? user.id,
       nazev: 'Nová položka', mnozstvi: 1, jednotka: 'ks', cena_za_kus: 0, sleva_procent: 0, poradi,
     }).select('*').single();
     if (data) {
@@ -172,7 +180,7 @@ export default function DealsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data } = await supabase.from('deal_items').insert({
-      deal_id: selectedDeal.id, user_id: user.id,
+      deal_id: selectedDeal.id, user_id: ownerId ?? user.id,
       nazev: tpl.nazev, popis: tpl.popis, mnozstvi: tpl.mnozstvi,
       jednotka: tpl.jednotka, cena_za_kus: tpl.cena_za_kus,
       sleva_procent: tpl.sleva_procent, poradi: items.length,
@@ -205,7 +213,7 @@ export default function DealsPage() {
     if (!stagesData || stagesData.length === 0) {
       const { data: created } = await supabase
         .from('pipeline_stages')
-        .insert(DEFAULT_STAGES.map(s => ({ ...s, user_id: user.id })))
+        .insert(DEFAULT_STAGES.map(s => ({ ...s, user_id: ownerId ?? user.id })))
         .select()
         .order('poradi');
       stagesData = created ?? [];
@@ -214,10 +222,11 @@ export default function DealsPage() {
     const loadedStages = stagesData ?? [];
     setStages(loadedStages);
 
-    // Load deals
+    // Show: unassigned/pending/declined + deals assigned TO this owner (from members)
     const { data: dealsData } = await supabase
       .from('deals')
       .select(DEAL_SELECT)
+      .or(`assignment_status.is.null,assignment_status.eq.declined,assigned_to.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
     setDeals((dealsData as unknown as Deal[]) ?? []);
@@ -237,7 +246,32 @@ export default function DealsPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setUserId(user.id);
+      const membersData = await fetch('/api/team/members').then(r => r.json());
+      setTeamMembers(membersData.members ?? []);
+      setOwnerId(membersData.ownerId ?? null);
+
+      if (user && membersData.ownerId && membersData.ownerId !== user.id) {
+        // Member: load all workspace data via service role
+        setIsMember(true);
+        setMemberUserId(user.id);
+        const ws = await fetch('/api/team/workspace').then(r => r.json());
+        setDeals((ws.deals ?? []) as Deal[]);
+        setStages((ws.stages ?? []) as Stage[]);
+        setContacts(ws.contacts ?? []);
+        if ((ws.stages ?? []).length > 0) {
+          setNewDeal(p => ({ ...p, stage_id: ws.stages[0].id }));
+        }
+        setLoading(false);
+      } else {
+        loadData();
+      }
+    };
+    init();
+  }, [loadData]);
 
   // Group deals by stage_id; deals with null stage_id go to first stage
   const dealsByStage = stages.reduce<Record<string, Deal[]>>((acc, s) => {
@@ -266,6 +300,7 @@ export default function DealsPage() {
       priorita: deal.priorita ?? 'stredni',
       pravdepodobnost: deal.pravdepodobnost != null ? String(deal.pravdepodobnost) : '50',
       zdroj: deal.zdroj ?? 'jine',
+      assigned_to: deal.assigned_to ?? '',
     });
     loadItems(deal.id);
   };
@@ -281,18 +316,23 @@ export default function DealsPage() {
       setSelectedDeal(prev => prev ? { ...prev, stage_id: newStageId } : null);
       setEditForm(prev => ({ ...prev, stage_id: newStageId }));
     }
-    await supabase.from('deals').update({ stage_id: newStageId }).eq('id', draggableId);
+    if (isMember) {
+      await fetch('/api/team/workspace', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: draggableId, stage_id: newStageId }),
+      });
+    } else {
+      await supabase.from('deals').update({ stage_id: newStageId }).eq('id', draggableId);
+    }
   };
 
   const handleAddDeal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDeal.nazev.trim()) return;
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
 
-    const { data } = await supabase.from('deals').insert({
-      user_id: user.id,
+    const dealPayload = {
       nazev: newDeal.nazev.trim(),
       hodnota: parseFloat(newDeal.hodnota) || 0,
       contact_id: newDeal.contact_id || null,
@@ -302,12 +342,70 @@ export default function DealsPage() {
       priorita: newDeal.priorita,
       pravdepodobnost: parseInt(newDeal.pravdepodobnost) || 50,
       zdroj: newDeal.zdroj,
-    }).select(DEAL_SELECT).single();
+      assigned_to: newDeal.assigned_to || null,
+    };
 
-    if (data) setDeals(prev => [data as unknown as Deal, ...prev]);
+    let data: Deal | null = null;
+
+    if (isMember) {
+      const res = await fetch('/api/team/workspace', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dealPayload),
+      });
+      const json = await res.json();
+      data = json.deal ?? null;
+    } else {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setSaving(false); return; }
+      const { data: inserted } = await supabase.from('deals').insert({
+        user_id: ownerId ?? user.id,
+        ...dealPayload,
+      }).select(DEAL_SELECT).single();
+      data = inserted as unknown as Deal ?? null;
+    }
+
+    if (data) {
+      setDeals(prev => [data, ...prev]);
+      if (newDeal.assigned_to) {
+        // Notify whoever was assigned (works for owner→member and member→owner)
+        fetch('/api/team/notify-assignment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'deal', id: data.id, assignedToId: newDeal.assigned_to, itemName: newDeal.nazev.trim() }),
+        });
+      }
+    }
     setNewDeal({ ...emptyForm(), stage_id: stages[0]?.id ?? '' });
     setShowModal(false);
     setSaving(false);
+  };
+
+  const handleAssignmentAction = async (dealId: string, action: 'accepted' | 'declined') => {
+    setActioningId(dealId);
+    await fetch('/api/team/assignment-action', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'deal', id: dealId, action }),
+    });
+    setDeals(prev => prev.map(d => d.id === dealId ? { ...d, assignment_status: action } : d));
+    setActioningId(null);
+  };
+
+  const handleOwnerAssignmentAction = async (dealId: string, action: 'accepted' | 'declined') => {
+    setActioningId(dealId);
+    await fetch('/api/team/owner-assignment-action', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: dealId, action }),
+    });
+    if (action === 'accepted') {
+      setDeals(prev => prev.map(d => d.id === dealId ? { ...d, assignment_status: 'accepted', assigned_to: null } : d));
+    } else {
+      // Declined → deal returns to unassigned pool
+      setDeals(prev => prev.map(d => d.id === dealId ? { ...d, assigned_to: null, assignment_status: null } : d));
+    }
+    setActioningId(null);
   };
 
   const handleUpdateDeal = async (e: React.FormEvent) => {
@@ -315,24 +413,63 @@ export default function DealsPage() {
     if (!selectedDeal || !editForm.nazev.trim()) return;
     setEditSaving(true);
 
-    const { data } = await supabase.from('deals')
-      .update({
-        nazev: editForm.nazev.trim(),
-        hodnota: parseFloat(editForm.hodnota) || 0,
-        stage_id: editForm.stage_id || null,
-        contact_id: editForm.contact_id || null,
-        datum_uzavreni: editForm.datum_uzavreni || null,
-        priorita: editForm.priorita,
-        pravdepodobnost: parseInt(editForm.pravdepodobnost) || 50,
-        zdroj: editForm.zdroj,
-      })
-      .eq('id', selectedDeal.id)
-      .select(DEAL_SELECT)
-      .single();
+    const newAssignedTo = editForm.assigned_to || null;
+    const assignmentChanged = newAssignedTo !== (selectedDeal.assigned_to ?? null);
 
-    if (data) {
-      setDeals(prev => prev.map(d => d.id === selectedDeal.id ? (data as unknown as Deal) : d));
+    const updates: Record<string, unknown> = {
+      nazev: editForm.nazev.trim(),
+      hodnota: parseFloat(editForm.hodnota) || 0,
+      stage_id: editForm.stage_id || null,
+      contact_id: editForm.contact_id || null,
+      datum_uzavreni: editForm.datum_uzavreni || null,
+      priorita: editForm.priorita,
+      pravdepodobnost: parseInt(editForm.pravdepodobnost) || 50,
+      zdroj: editForm.zdroj,
+      assigned_to: newAssignedTo,
+    };
+
+    // Reset assignment_status when assignment changes
+    if (assignmentChanged) {
+      updates.assignment_status = null;
     }
+
+    if (isMember) {
+      const res = await fetch('/api/team/workspace', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selectedDeal.id, ...updates }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setEditSaving(false);
+        showToast('Chyba při ukládání: ' + (json.error ?? res.status), '#ef4444');
+        return;
+      }
+      const updatedContact = contacts.find(c => c.id === editForm.contact_id) ?? null;
+      setDeals(prev => prev.map(d => d.id === selectedDeal.id ? {
+        ...d, ...updates,
+        contacts: updatedContact ? { jmeno: updatedContact.jmeno, prijmeni: updatedContact.prijmeni, firma: updatedContact.firma } : null,
+      } : d));
+    } else {
+      const { data } = await supabase.from('deals')
+        .update(updates)
+        .eq('id', selectedDeal.id)
+        .select(DEAL_SELECT)
+        .single();
+      if (data) {
+        setDeals(prev => prev.map(d => d.id === selectedDeal.id ? (data as unknown as Deal) : d));
+      }
+    }
+
+    // Send notification if assignment changed
+    if (assignmentChanged && newAssignedTo) {
+      fetch('/api/team/notify-assignment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'deal', id: selectedDeal.id, assignedToId: newAssignedTo, itemName: editForm.nazev.trim() }),
+      });
+    }
+
     setEditSaving(false);
     closeDetail();
     showToast('Zakázka byla uložena', '#10b981');
@@ -520,6 +657,52 @@ export default function DealsPage() {
                                         📅 {new Date(deal.datum_uzavreni).toLocaleDateString('cs-CZ')}
                                       </p>
                                     )}
+                                    {deal.assignment_status === 'accepted' && (
+                                      <span className="text-xs px-1.5 py-0.5 rounded-md self-start mt-0.5"
+                                        style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}>
+                                        ✓ Přijato
+                                      </span>
+                                    )}
+                                    {deal.assignment_status === 'declined' && (
+                                      <span className="text-xs px-1.5 py-0.5 rounded-md self-start mt-0.5"
+                                        style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171' }}>
+                                        ✗ Odmítnuto
+                                      </span>
+                                    )}
+                                    {/* Member: accept/decline deal assigned by owner */}
+                                    {isMember && deal.assigned_to === memberUserId && !deal.assignment_status && (
+                                      <div className="flex gap-1.5 mt-1.5">
+                                        <button
+                                          onClick={() => handleAssignmentAction(deal.id, 'accepted')}
+                                          disabled={actioningId === deal.id}
+                                          className="flex-1 text-xs py-1 rounded-lg font-semibold"
+                                          style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}
+                                        >Přijmout</button>
+                                        <button
+                                          onClick={() => handleAssignmentAction(deal.id, 'declined')}
+                                          disabled={actioningId === deal.id}
+                                          className="flex-1 text-xs py-1 rounded-lg font-semibold"
+                                          style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}
+                                        >Odmítnout</button>
+                                      </div>
+                                    )}
+                                    {/* Owner: accept/decline deal assigned by member */}
+                                    {!isMember && deal.assigned_to === userId && !deal.assignment_status && (
+                                      <div className="flex gap-1.5 mt-1.5">
+                                        <button
+                                          onClick={() => handleOwnerAssignmentAction(deal.id, 'accepted')}
+                                          disabled={actioningId === deal.id}
+                                          className="flex-1 text-xs py-1 rounded-lg font-semibold"
+                                          style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}
+                                        >Přijmout</button>
+                                        <button
+                                          onClick={() => handleOwnerAssignmentAction(deal.id, 'declined')}
+                                          disabled={actioningId === deal.id}
+                                          className="flex-1 text-xs py-1 rounded-lg font-semibold"
+                                          style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}
+                                        >Odmítnout</button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               )}
@@ -654,6 +837,20 @@ export default function DealsPage() {
                   {ZDROJ.map(z => <option key={z.id} value={z.id} style={{ background: '#1a1a1a' }}>{z.label}</option>)}
                 </select>
               </div>
+              {teamMembers.length > 1 && (
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Přiřadit členovi týmu</label>
+                  <select value={newDeal.assigned_to} onChange={e => setNewDeal(p => ({ ...p, assigned_to: e.target.value }))}
+                    style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="" style={{ background: '#1a1a1a' }}>– Nepřiřazeno –</option>
+                    {teamMembers.map(m => (
+                      <option key={m.id} value={m.id} style={{ background: '#1a1a1a' }}>
+                        {m.name} {m.isOwner ? '(Admin)' : `(${m.role === 'clen' ? 'Člen' : m.role === 'cteni' ? 'Čtení' : m.role})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex gap-3 pt-1">
                 <button type="submit" disabled={saving}
                   className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-60"
@@ -814,6 +1011,19 @@ export default function DealsPage() {
                       {ZDROJ.map(z => <option key={z.id} value={z.id} style={{ background: '#1a1a1a' }}>{z.label}</option>)}
                     </select>
                   </div>
+                  {teamMembers.length > 1 && (
+                    <div>
+                      <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Předat členovi týmu</label>
+                      <select value={editForm.assigned_to} onChange={e => setEditForm(p => ({ ...p, assigned_to: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
+                        <option value="" style={{ background: '#1a1a1a' }}>– Nepřiřazeno –</option>
+                        {teamMembers.map(m => (
+                          <option key={m.id} value={m.id} style={{ background: '#1a1a1a' }}>
+                            {m.name} {m.isOwner ? '(Admin)' : `(${m.role === 'clen' ? 'Člen' : m.role === 'cteni' ? 'Čtení' : m.role})`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div className="flex flex-col gap-2 pt-2">
                     <button type="submit" disabled={editSaving} className="w-full py-3 rounded-xl text-sm font-bold disabled:opacity-60"
                       style={{ background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a' }}>

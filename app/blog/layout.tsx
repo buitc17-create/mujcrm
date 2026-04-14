@@ -12,12 +12,12 @@ export const metadata: Metadata = {
     "GDPR CRM",
     "obchodní pipeline",
   ],
-  alternates: { canonical: "https://mujcrm.vercel.app/blog" },
+  alternates: { canonical: "https://www.mujcrm.cz/blog" },
   openGraph: {
     title: "Blog – Tipy a průvodci pro CRM v ČR | MujCRM",
     description:
       "Tipy, průvodci a srovnání pro podnikatele a firmy v ČR. Naučte se využívat CRM naplno.",
-    url: "https://mujcrm.vercel.app/blog",
+    url: "https://www.mujcrm.cz/blog",
     type: "website",
     locale: "cs_CZ",
   },

@@ -30,13 +30,13 @@ const tabs = [
         <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
       </svg>
     ),
-    headline: 'Koordinuj tým bez zbytečných porad',
-    desc: 'Víš co dělá každý člen týmu, kdo řeší kterého zákazníka a jak plní cíle. Méně e-mailů, více výsledků.',
+    headline: 'Přiřaď práci a měj přehled',
+    desc: 'Přiřaď zákazníky a obchody konkrétním členům týmu. Každý ví, co má na starosti, a ty dostaneš automatický měsíční výkaz výkonu každého člena.',
     bullets: [
-      'Rozdělení zákazníků a obchodů mezi členy týmu',
-      'Sledování výkonu a aktivit každého zaměstnance',
-      'Sdílené poznámky a záznamy ke každému kontaktu',
-      'Přístupová práva a role pro různé úrovně týmu',
+      'Přiřazení zakázek a leadů konkrétním členům týmu',
+      'Pozvání členů a správa přístupových rolí',
+      'Automatický měsíční výkaz výkonu každého člena e‑mailem',
+      'Limity členů dle tarifu (Tým 3, Business 10, Enterprise neomezený)',
     ],
     accent: '#7B2FFF',
   },

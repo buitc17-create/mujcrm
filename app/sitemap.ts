@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 import { posts } from "./blog/data/posts";
 
-const BASE_URL = "https://mujcrm.vercel.app";
+const BASE_URL = "https://www.mujcrm.cz";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const blogPosts: MetadataRoute.Sitemap = posts.map((post) => ({

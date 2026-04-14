@@ -116,10 +116,22 @@ const navItems = [
     ),
   },
   {
+    label: 'Automatizace',
+    href: '/dashboard/automations',
+    exact: false,
+    dataTour: 'nav-automatizace',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+    ),
+  },
+  {
     label: 'Tým',
     href: '/dashboard/team',
     exact: false,
     dataTour: 'nav-tym',
+    adminOnly: true,
     icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -130,10 +142,11 @@ const navItems = [
     ),
   },
   {
-    label: 'Fakturace',
+    label: 'Předplatné',
     href: '/dashboard/billing',
     exact: false,
     dataTour: 'nav-billing',
+    adminOnly: true,
     icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
@@ -145,6 +158,7 @@ const navItems = [
     href: '/dashboard/settings',
     exact: true,
     dataTour: 'nav-nastaveni',
+    adminOnly: true,
     icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="3"/>
@@ -158,9 +172,10 @@ interface SidebarProps {
   name: string;
   email: string;
   initials: string;
+  isAdmin: boolean;
 }
 
-export default function Sidebar({ name, email, initials }: SidebarProps) {
+export default function Sidebar({ name, email, initials, isAdmin }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -196,6 +211,27 @@ export default function Sidebar({ name, email, initials }: SidebarProps) {
         {navItems.map((item) => {
           const active = isActive(item);
           const isEmail = item.href === '/dashboard/email';
+          const locked = !isAdmin && item.adminOnly;
+
+          if (locked) {
+            return (
+              <div
+                key={item.href}
+                title="Pouze pro administrátora"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-sm font-medium cursor-not-allowed select-none"
+                style={{ color: 'rgba(237,237,237,0.22)', borderLeft: '2px solid transparent' }}
+              >
+                <span style={{ color: 'rgba(237,237,237,0.15)', flexShrink: 0 }}>{item.icon}</span>
+                {item.label}
+                <span className="ml-auto">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                </span>
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.href}

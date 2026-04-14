@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
+import { decryptPassword } from '@/lib/emailCrypto';
 
 function isSentFolder(path: string): boolean {
   return /sent|odeslané|odeslan/i.test(path);
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     host: imap_host,
     port: imap_port ?? (imap_secure ? 993 : 143),
     secure: imap_secure ?? true,
-    auth: { user: smtp_user, pass: smtp_password },
+    auth: { user: smtp_user, pass: decryptPassword(smtp_password) },
     logger: false,
   });
 

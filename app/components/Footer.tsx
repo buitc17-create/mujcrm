@@ -1,5 +1,7 @@
 'use client';
 
+import { openCookieSettings } from './CookieConsent';
+
 const navLinks = [
   { label: 'Funkce', href: '/#funkce' },
   { label: 'Ceník', href: '/#pricing' },
@@ -36,7 +38,7 @@ export default function Footer() {
               </span>
             </a>
             <p className="text-sm leading-relaxed max-w-xs mb-6" style={{ color: 'rgba(237,237,237,0.45)' }}>
-              Moderní CRM pro české firmy. Zákazníci, obchody a tým přehledně na jednom místě.
+              Jednoduchý CRM pro podnikatele a malé firmy. Zákazníci, obchody a tým přehledně na jednom místě.
             </p>
             {/* Status indicator */}
             <div
@@ -105,7 +107,7 @@ export default function Footer() {
           style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
         >
           <p className="text-xs" style={{ color: 'rgba(237,237,237,0.3)' }}>
-            © 2026 MujCRM s.r.o. Všechna práva vyhrazena.
+            © 2026 Tomáš Vydra. Všechna práva vyhrazena.
           </p>
           <div className="flex items-center gap-5">
             <a href="/zasady-soukromi" className="text-xs transition-colors" style={{ color: 'rgba(237,237,237,0.3)' }}
@@ -118,6 +120,14 @@ export default function Footer() {
               onMouseLeave={e => (e.currentTarget.style.color = 'rgba(237,237,237,0.3)')}>
               Podmínky služby
             </a>
+            <button
+              onClick={openCookieSettings}
+              className="text-xs transition-colors"
+              style={{ color: 'rgba(237,237,237,0.3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(237,237,237,0.7)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(237,237,237,0.3)')}>
+              Správa cookies
+            </button>
           </div>
         </div>
       </div>

@@ -13,7 +13,7 @@ import {
   type ContentBlock,
 } from '../data/posts';
 
-const BASE_URL = 'https://mujcrm.vercel.app';
+const BASE_URL = 'https://www.mujcrm.cz';
 
 export function generateStaticParams() {
   return posts.map((p) => ({ slug: p.slug }));
@@ -40,7 +40,7 @@ export async function generateMetadata(
       locale: 'cs_CZ',
       publishedTime: post.dateISO,
       modifiedTime: post.dateISO,
-      authors: ['MujCRM s.r.o.'],
+      authors: ['Tomáš Vydra'],
       tags: post.keywords,
     },
     twitter: { card: 'summary_large_image', title: post.title, description: desc },
@@ -170,7 +170,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     '@type': 'Article',
     headline: post.title,
     description: post.perex,
-    author: { '@type': 'Organization', name: 'MujCRM s.r.o.' },
+    author: { '@type': 'Organization', name: 'Tomáš Vydra' },
     publisher: { '@type': 'Organization', name: 'MujCRM', url: BASE_URL },
     datePublished: post.dateISO,
     dateModified: post.dateISO,

@@ -9,6 +9,7 @@ import EmailComposer from '@/app/dashboard/components/EmailComposer';
 type Contact = {
   id: string; jmeno: string; prijmeni: string | null; email: string | null;
   telefon: string | null; firma: string | null; tag: string; poznamky: string | null; created_at: string;
+  datum_narozeni: string | null;
 };
 type Deal = { id: string; nazev: string; hodnota: number; status: string; datum_uzavreni: string | null };
 type Task = { id: string; nazev: string; deadline: string | null; dokonceno: boolean };
@@ -43,17 +44,32 @@ export default function ContactDetailPage() {
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Contact>>({});
   const [showEmail, setShowEmail] = useState(false);
+  const [isMember, setIsMember] = useState(false);
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [cRes, dRes, tRes] = await Promise.all([
-        supabase.from('contacts').select('*').eq('id', id).single(),
-        supabase.from('deals').select('id, nazev, hodnota, status, datum_uzavreni').eq('contact_id', id).order('created_at', { ascending: false }),
-        supabase.from('tasks').select('id, nazev, deadline, dokonceno').eq('contact_id', id).order('created_at', { ascending: false }),
-      ]);
-      if (cRes.data) { setContact(cRes.data); setEditForm(cRes.data); }
-      setDeals(dRes.data ?? []);
-      setTasks(tRes.data ?? []);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+
+      const membersData = await fetch('/api/team/members').then(r => r.json());
+      const member = membersData.ownerId && membersData.ownerId !== user.id;
+      setIsMember(member);
+
+      if (member) {
+        const res = await fetch(`/api/team/member-contacts/${id}`).then(r => r.json());
+        if (res.contact) { setContact(res.contact); setEditForm(res.contact); }
+        setDeals(res.deals ?? []);
+        setTasks(res.tasks ?? []);
+      } else {
+        const [cRes, dRes, tRes] = await Promise.all([
+          supabase.from('contacts').select('*').eq('id', id).single(),
+          supabase.from('deals').select('id, nazev, hodnota, status, datum_uzavreni').eq('contact_id', id).order('created_at', { ascending: false }),
+          supabase.from('tasks').select('id, nazev, deadline, dokonceno').eq('contact_id', id).order('created_at', { ascending: false }),
+        ]);
+        if (cRes.data) { setContact(cRes.data); setEditForm(cRes.data); }
+        setDeals(dRes.data ?? []);
+        setTasks(tRes.data ?? []);
+      }
       setLoading(false);
     };
     fetchAll();
@@ -70,6 +86,7 @@ export default function ContactDetailPage() {
       firma: editForm.firma?.trim() || null,
       tag: editForm.tag,
       poznamky: editForm.poznamky?.trim() || null,
+      datum_narozeni: editForm.datum_narozeni || null,
     }).eq('id', id).select().single();
     if (data) { setContact(data); setEditing(false); }
     setSaving(false);
@@ -125,6 +142,14 @@ export default function ContactDetailPage() {
                 </div>
               ))}
               <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Datum narození</label>
+                <input type="date" value={editForm.datum_narozeni ?? ''}
+                  onChange={e => setEditForm(f => ({ ...f, datum_narozeni: e.target.value }))}
+                  style={{ ...inputStyle, colorScheme: 'dark' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+              </div>
+              <div>
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Tag</label>
                 <select value={editForm.tag ?? 'zákazník'} onChange={e => setEditForm(f => ({ ...f, tag: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
                   {TAGS.map(t => <option key={t} value={t} style={{ background: '#1a1a1a' }}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
@@ -169,6 +194,12 @@ export default function ContactDetailPage() {
               <div className="flex flex-wrap gap-4 text-sm" style={{ color: 'rgba(237,237,237,0.55)' }}>
                 {contact.email && <a href={`mailto:${contact.email}`} style={{ color: '#00BFFF' }}>{contact.email}</a>}
                 {contact.telefon && <span>{contact.telefon}</span>}
+                {contact.datum_narozeni && (
+                  <span className="flex items-center gap-1">
+                    <span style={{ fontSize: 13 }}>🎂</span>
+                    {new Date(contact.datum_narozeni + 'T12:00:00').toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' })}
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex gap-2 flex-shrink-0">
@@ -182,22 +213,26 @@ export default function ContactDetailPage() {
                   Napsat email
                 </button>
               )}
-              <button onClick={() => setEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.7)' }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#ededed'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(237,237,237,0.7)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Upravit
-              </button>
-              <button onClick={handleDelete}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                Smazat
-              </button>
+              {!isMember && (
+                <>
+                  <button onClick={() => setEditing(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.7)' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#ededed'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(237,237,237,0.7)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Upravit
+                  </button>
+                  <button onClick={handleDelete}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                    style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                    Smazat
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

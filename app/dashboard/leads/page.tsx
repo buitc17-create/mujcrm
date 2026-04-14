@@ -12,11 +12,15 @@ type Lead = {
   telefon: string | null; firma: string | null; zdroj: string;
   lead_status_id: string | null; skore: number; poznamky: string | null;
   konvertovan: boolean; created_at: string;
+  cena: number | null; popis: string | null;
 };
+
+type ActiveEnrollment = { lead_id: string; current_step: number; automation_sequences: { name: string }[] | { name: string } | null };
 
 type LeadStatus = {
   id: string; nazev: string; barva: string; poradi: number;
 };
+type TeamMember = { id: string; name: string; email: string; role: string; isOwner: boolean };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -75,7 +79,10 @@ export default function LeadsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ jmeno: '', prijmeni: '', email: '', telefon: '', firma: '', zdroj: 'jine', lead_status_id: '', skore: 3, poznamky: '' });
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [enrollmentMap, setEnrollmentMap] = useState<Record<string, string>>({});
+  const [sequences, setSequences] = useState<{ id: string; name: string }[]>([]);
+  const [form, setForm] = useState({ jmeno: '', prijmeni: '', email: '', telefon: '', firma: '', zdroj: 'jine', lead_status_id: '', skore: 3, poznamky: '', assigned_to: '', cena: '', sequence_id: '' });
 
   const statusInfo = useCallback((id: string | null) => {
     if (!id) return statuses[0] ?? { id: '', nazev: '–', barva: '#6b7280' };
@@ -98,18 +105,33 @@ export default function LeadsPage() {
       statusData = created ?? [];
     }
 
-    const { data: leadsData } = await supabase
-      .from('leads').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    const [{ data: leadsData }, { data: enrollData }] = await Promise.all([
+      supabase.from('leads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('automation_enrollments').select('lead_id, current_step, automation_sequences(name)').eq('user_id', user.id).eq('status', 'active'),
+    ]);
+
+    const map: Record<string, string> = {};
+    (enrollData ?? []).forEach((e: ActiveEnrollment) => {
+      const seqName = Array.isArray(e.automation_sequences)
+        ? e.automation_sequences[0]?.name
+        : (e.automation_sequences as { name: string } | null)?.name;
+      if (e.lead_id && seqName) map[e.lead_id] = seqName;
+    });
 
     setStatuses(statusData ?? []);
     setLeads(leadsData ?? []);
+    setEnrollmentMap(map);
     if (statusData && statusData.length > 0) {
       setForm(f => f.lead_status_id ? f : { ...f, lead_status_id: statusData![0].id });
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+    fetch('/api/team/members').then(r => r.json()).then(d => setTeamMembers(d.members ?? []));
+    fetch('/api/automations/sequences').then(r => r.json()).then(d => setSequences(d.sequences ?? []));
+  }, [loadData]);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
 
@@ -188,14 +210,26 @@ export default function LeadsPage() {
       lead_status_id: form.lead_status_id || statuses[0]?.id || null,
       skore: form.skore,
       poznamky: form.poznamky.trim() || null,
+      assigned_to: form.assigned_to || null,
+      cena: form.cena ? parseFloat(form.cena) : null,
     }).select().single();
     if (error) {
       alert('Chyba při přidávání leadu: ' + error.message);
       setSaving(false);
       return;
     }
-    if (data) setLeads(prev => [data as Lead, ...prev]);
-    setForm({ jmeno: '', prijmeni: '', email: '', telefon: '', firma: '', zdroj: 'jine', lead_status_id: statuses[0]?.id ?? '', skore: 3, poznamky: '' });
+    if (data) {
+      setLeads(prev => [data as Lead, ...prev]);
+      // Spustit sekvenci pokud je vybrána a lead má email
+      if (form.sequence_id && (data as Lead).email) {
+        await fetch('/api/automations/enroll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lead_id: (data as Lead).id, sequence_id: form.sequence_id }),
+        });
+      }
+    }
+    setForm({ jmeno: '', prijmeni: '', email: '', telefon: '', firma: '', zdroj: 'jine', lead_status_id: statuses[0]?.id ?? '', skore: 3, poznamky: '', assigned_to: '', cena: '', sequence_id: '' });
     setShowModal(false);
     setSaving(false);
   };
@@ -332,16 +366,17 @@ export default function LeadsPage() {
                       { key: 'firma' as SortKey, label: 'Firma', cls: 'px-2 hidden md:table-cell' },
                       null, null,
                       { key: 'lead_status_id' as SortKey, label: 'Status', cls: 'px-2' },
-                      { key: 'created_at' as SortKey, label: 'Datum', cls: 'px-2 hidden lg:table-cell' },
+                      { key: 'created_at' as SortKey, label: 'Cena', cls: 'px-2 hidden lg:table-cell' },
                       null,
                     ].map((col, i) => col ? (
                       <th key={i} className={`${col.cls} py-3 text-left font-semibold uppercase tracking-wider cursor-pointer select-none`}
                         onClick={() => toggleSort(col.key)}>
-                        {col.label}<SortIcon k={col.key} />
+                        {col.label === 'Cena' ? 'Cena' : col.label}<SortIcon k={col.key} />
                       </th>
                     ) : (
                       <th key={i} className="px-2 py-3 hidden md:table-cell" />
                     ))}
+                    <th className="px-2 py-3 hidden xl:table-cell text-left font-semibold uppercase tracking-wider text-xs" style={{ color: 'rgba(237,237,237,0.35)' }}>Sekvence</th>
                     <th className="pr-4 py-3 text-right font-semibold uppercase tracking-wider">Akce</th>
                   </tr>
                 </thead>
@@ -367,11 +402,17 @@ export default function LeadsPage() {
                         <td className="px-2 py-3">
                           <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: st.barva + '18', color: st.barva, border: `1px solid ${st.barva}30` }}>{st.nazev}</span>
                         </td>
-                        <td className="px-2 py-3 hidden lg:table-cell">
-                          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: sr.color + '15', color: sr.color }}>{sr.label}</span>
-                        </td>
                         <td className="px-2 py-3 hidden lg:table-cell" style={{ color: 'rgba(237,237,237,0.35)', fontSize: 12 }}>
-                          {new Date(lead.created_at).toLocaleDateString('cs-CZ')}
+                          {lead.cena != null ? lead.cena.toLocaleString('cs-CZ') + ' Kč' : '–'}
+                        </td>
+                        <td className="px-2 py-3 hidden xl:table-cell">
+                          {enrollmentMap[lead.id] ? (
+                            <span className="text-xs px-2 py-1 rounded-full font-semibold" style={{ background: 'rgba(0,191,255,0.1)', color: '#00BFFF', border: '1px solid rgba(0,191,255,0.25)' }}>
+                              ▶ {enrollmentMap[lead.id]}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'rgba(237,237,237,0.2)', fontSize: 12 }}>–</span>
+                          )}
                         </td>
                         <td className="pr-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -543,6 +584,13 @@ export default function LeadsPage() {
                 </div>
               </div>
               <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'rgba(237,237,237,0.5)' }}>Cena (Kč)</label>
+                <input type="number" min={0} step={1} value={form.cena} onChange={e => setForm(p => ({ ...p, cena: e.target.value }))} placeholder="0"
+                  style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+              </div>
+              <div>
                 <label className="block text-xs font-semibold mb-2" style={{ color: 'rgba(237,237,237,0.5)' }}>Skóre</label>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map(n => (
@@ -558,6 +606,43 @@ export default function LeadsPage() {
                   onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')}
                   onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
               </div>
+              {/* Automatizace */}
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'rgba(237,237,237,0.5)' }}>Spustit sekvenci po přidání</label>
+                {sequences.length === 0 ? (
+                  <p className="text-xs px-3 py-2.5 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(237,237,237,0.35)' }}>
+                    Nejprve vytvořte sekvenci v sekci Automatizace.
+                  </p>
+                ) : (
+                  <select
+                    value={form.sequence_id}
+                    onChange={e => setForm(p => ({ ...p, sequence_id: e.target.value }))}
+                    style={{ ...inputStyle, cursor: 'pointer' }}
+                  >
+                    <option value="" style={{ background: '#1a1a1a' }}>– Nespouštět sekvenci –</option>
+                    {sequences.map(s => (
+                      <option key={s.id} value={s.id} style={{ background: '#1a1a1a' }}>{s.name}</option>
+                    ))}
+                  </select>
+                )}
+                {form.sequence_id && !form.email && (
+                  <p className="text-xs mt-1.5" style={{ color: '#f59e0b' }}>⚠ Pro spuštění sekvence vyplň email leadu.</p>
+                )}
+              </div>
+              {teamMembers.length > 1 && (
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'rgba(237,237,237,0.5)' }}>Přiřadit členovi týmu</label>
+                  <select value={form.assigned_to} onChange={e => setForm(p => ({ ...p, assigned_to: e.target.value }))}
+                    style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="" style={{ background: '#1a1a1a' }}>– Nepřiřazeno –</option>
+                    {teamMembers.map(m => (
+                      <option key={m.id} value={m.id} style={{ background: '#1a1a1a' }}>
+                        {m.name} {m.isOwner ? '(Admin)' : `(${m.role === 'clen' ? 'Člen' : m.role === 'cteni' ? 'Čtení' : m.role})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex gap-3 pt-1">
                 <button type="submit" disabled={saving}
                   className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-60"

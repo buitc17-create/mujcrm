@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
+import { decryptPassword } from '@/lib/emailCrypto';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
       host: imap_host,
       port: imap_port ?? 993,
       secure: imap_secure ?? true,
-      auth: { user: smtp_user, pass: smtp_password },
+      auth: { user: smtp_user, pass: decryptPassword(smtp_password) },
       logger: false,
     });
 

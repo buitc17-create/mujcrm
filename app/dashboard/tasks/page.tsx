@@ -2,13 +2,16 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import DateTimePicker from '@/app/components/DateTimePicker';
 
 type Task = {
   id: string; nazev: string; popis: string | null; deadline: string | null;
-  dokonceno: boolean; contact_id: string | null; created_at: string;
+  dokonceno: boolean; contact_id: string | null; assigned_to: string | null;
+  assignment_status: string | null; created_at: string;
   contacts?: { jmeno: string; prijmeni: string | null } | null;
 };
 type Contact = { id: string; jmeno: string; prijmeni: string | null };
+type TeamMember = { id: string; name: string; email: string; role: string; isOwner: boolean };
 
 type FilterType = 'vse' | 'aktivni' | 'dokoncene' | 'po-terminu';
 
@@ -42,25 +45,48 @@ function sortTasks(tasks: Task[]): Task[] {
   return [...overdue, ...today, ...future, ...done];
 }
 
-const emptyForm = { nazev: '', popis: '', deadline: '', contact_id: '' };
+const REMINDER_OPTIONS = [
+  { value: '', label: '— Bez připomínky —' },
+  { value: '15', label: '15 minut předem' },
+  { value: '30', label: '30 minut předem' },
+  { value: '60', label: '1 hodinu předem' },
+  { value: '120', label: '2 hodiny předem' },
+  { value: '1440', label: '1 den předem' },
+  { value: '2880', label: '2 dny předem' },
+];
+
+const emptyForm = { nazev: '', popis: '', deadline: '', contact_id: '', reminder: '', assigned_to: '' };
 
 export default function TasksPage() {
   const supabase = createClient();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('vse');
   const [showModal, setShowModal] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
 
   const fetchTasks = async () => {
-    const { data } = await supabase
-      .from('tasks')
-      .select('id, nazev, popis, deadline, dokonceno, contact_id, created_at, contacts(jmeno, prijmeni)')
-      .order('created_at', { ascending: false });
-    setTasks((data as unknown as Task[]) ?? []);
+    const membersData = await fetch('/api/team/members').then(r => r.json());
+    const { data: { user } } = await supabase.auth.getUser();
+    setTeamMembers(membersData.members ?? []);
+    setOwnerId(membersData.ownerId ?? null);
+
+    if (user && membersData.ownerId && membersData.ownerId !== user.id) {
+      // Member: only assigned tasks via service role
+      const assigned = await fetch('/api/team/assigned-items').then(r => r.json());
+      setTasks((assigned.tasks ?? []) as Task[]);
+    } else {
+      const { data } = await supabase
+        .from('tasks')
+        .select('id, nazev, popis, deadline, dokonceno, contact_id, assigned_to, assignment_status, created_at, contacts(jmeno, prijmeni)')
+        .order('created_at', { ascending: false });
+      setTasks((data as unknown as Task[]) ?? []);
+    }
     setLoading(false);
   };
 
@@ -83,13 +109,31 @@ export default function TasksPage() {
     setShowModal(true);
   };
 
-  const openEdit = (task: Task) => {
+  const openEdit = async (task: Task) => {
     setEditTask(task);
+    // Načti existující neodeslanou notifikaci
+    let reminder = '';
+    if (task.deadline) {
+      const { data: notif } = await supabase
+        .from('notification_queue')
+        .select('scheduled_at')
+        .eq('source_type', 'task')
+        .eq('source_id', task.id)
+        .eq('sent', false)
+        .maybeSingle();
+      if (notif?.scheduled_at && task.deadline) {
+        const diff = Math.round((new Date(task.deadline).getTime() - new Date(notif.scheduled_at).getTime()) / 60000);
+        const match = [15, 30, 60, 120, 1440, 2880].find(v => Math.abs(v - diff) < 5);
+        if (match) reminder = String(match);
+      }
+    }
     setForm({
       nazev: task.nazev,
       popis: task.popis ?? '',
       deadline: task.deadline ? task.deadline.slice(0, 16) : '',
       contact_id: task.contact_id ?? '',
+      reminder,
+      assigned_to: task.assigned_to ?? '',
     });
     setShowModal(true);
   };
@@ -144,6 +188,7 @@ export default function TasksPage() {
           popis: form.popis.trim() || null,
           deadline: form.deadline || null,
           contact_id: form.contact_id || null,
+          assigned_to: form.assigned_to || null,
         })
         .eq('id', editTask.id)
         .select('id, nazev, popis, deadline, dokonceno, contact_id, created_at, contacts(jmeno, prijmeni)')
@@ -163,24 +208,44 @@ export default function TasksPage() {
         } else {
           await supabase.from('calendar_events').delete().eq('task_id', editTask.id);
         }
+        // Update notification
+        await supabase.from('notification_queue').delete().eq('source_type', 'task').eq('source_id', editTask.id).eq('sent', false);
+        if (form.reminder && form.deadline && form.deadline.length >= 16) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const scheduledAt = new Date(new Date(form.deadline).getTime() - parseInt(form.reminder) * 60 * 1000);
+            if (scheduledAt > new Date()) {
+              await supabase.from('notification_queue').insert({
+                user_id: user.id,
+                title: form.nazev.trim(),
+                body: 'Připomínka úkolu',
+                url: '/dashboard/tasks',
+                scheduled_at: scheduledAt.toISOString(),
+                source_type: 'task',
+                source_id: editTask.id,
+              });
+            }
+          }
+        }
       }
     } else {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSaving(false); return; }
       const { data } = await supabase.from('tasks').insert({
-        user_id: user.id,
+        user_id: ownerId ?? user.id,
         nazev: form.nazev.trim(),
         popis: form.popis.trim() || null,
         deadline: form.deadline || null,
         contact_id: form.contact_id || null,
+        assigned_to: form.assigned_to || null,
         dokonceno: false,
-      }).select('id, nazev, popis, deadline, dokonceno, contact_id, created_at, contacts(jmeno, prijmeni)').single();
+      }).select('id, nazev, popis, deadline, dokonceno, contact_id, assigned_to, created_at, contacts(jmeno, prijmeni)').single();
       if (data) {
         const newTask = data as unknown as Task;
         setTasks(prev => [newTask, ...prev]);
         if (form.deadline) {
           await supabase.from('calendar_events').insert({
-            user_id: user.id,
+            user_id: ownerId ?? user.id,
             nazev: form.nazev.trim(),
             typ: 'deadline',
             datum: form.deadline.slice(0, 10),
@@ -190,6 +255,28 @@ export default function TasksPage() {
             contact_id: form.contact_id || null,
             deal_id: null,
             task_id: newTask.id,
+          });
+        }
+        if (form.reminder && form.deadline && form.deadline.length >= 16) {
+          const scheduledAt = new Date(new Date(form.deadline).getTime() - parseInt(form.reminder) * 60 * 1000);
+          if (scheduledAt > new Date()) {
+            await supabase.from('notification_queue').insert({
+              user_id: user.id,
+              title: 'Připomínka úkolu',
+              body: form.nazev.trim(),
+              url: '/dashboard/tasks',
+              scheduled_at: scheduledAt.toISOString(),
+              source_type: 'task',
+              source_id: newTask.id,
+            });
+          }
+        }
+        // Email notification to assigned member
+        if (form.assigned_to) {
+          fetch('/api/team/notify-assignment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'task', id: newTask.id, assignedToId: form.assigned_to, itemName: form.nazev.trim() }),
           });
         }
       }
@@ -332,12 +419,32 @@ export default function TasksPage() {
                               👤 {c.jmeno} {c.prijmeni ?? ''}
                             </span>
                           )}
+                          {task.assigned_to && teamMembers.length > 1 && (() => {
+                            const m = teamMembers.find(tm => tm.id === task.assigned_to);
+                            return m ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                style={{ background: 'rgba(0,191,255,0.1)', color: '#00BFFF', border: '1px solid rgba(0,191,255,0.2)' }}>
+                                → {m.name}
+                              </span>
+                            ) : null;
+                          })()}
+                          {task.assignment_status === 'accepted' && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.25)' }}>
+                              ✓ Přijato
+                            </span>
+                          )}
+                          {task.assignment_status === 'declined' && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                              style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>
+                              ✗ Odmítnuto
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       {/* Actions */}
                       <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex-shrink-0">
-                        {/* Edit */}
                         <button
                           onClick={() => openEdit(task)}
                           style={{ color: 'rgba(237,237,237,0.35)' }}
@@ -346,7 +453,6 @@ export default function TasksPage() {
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
-                        {/* Delete */}
                         <button
                           onClick={() => deleteTask(task.id)}
                           style={{ color: 'rgba(239,68,68,0.5)' }}
@@ -396,12 +502,30 @@ export default function TasksPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Deadline</label>
-                <input type="datetime-local" value={form.deadline}
-                  onChange={e => setForm(p => ({ ...p, deadline: e.target.value }))}
-                  style={{ ...inputStyle, colorScheme: 'dark' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')}
-                  onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+                <DateTimePicker
+                  value={form.deadline}
+                  onChange={v => setForm(p => ({ ...p, deadline: v, reminder: '' }))}
+                  includeTime={true}
+                  placeholder="Vybrat deadline"
+                />
               </div>
+              {form.deadline && form.deadline.length >= 16 && (
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Připomínka</label>
+                  <select value={form.reminder} onChange={e => setForm(p => ({ ...p, reminder: e.target.value }))}
+                    style={{ ...inputStyle, cursor: 'pointer' }}>
+                    {REMINDER_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value} style={{ background: '#1a1a1a' }}>{o.label}</option>
+                    ))}
+                  </select>
+                  {form.reminder && (
+                    <p className="text-xs mt-1.5 flex items-center gap-1.5" style={{ color: '#00BFFF' }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                      Notifikace odejde {new Date(new Date(form.deadline).getTime() - parseInt(form.reminder) * 60000).toLocaleString('cs-CZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Přiřadit ke kontaktu</label>
                 <select value={form.contact_id} onChange={e => setForm(p => ({ ...p, contact_id: e.target.value }))}
@@ -414,6 +538,20 @@ export default function TasksPage() {
                   ))}
                 </select>
               </div>
+              {teamMembers.length > 1 && (
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Přiřadit členovi týmu</label>
+                  <select value={form.assigned_to} onChange={e => setForm(p => ({ ...p, assigned_to: e.target.value }))}
+                    style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="" style={{ background: '#1a1a1a' }}>– Nepřiřazeno –</option>
+                    {teamMembers.map(m => (
+                      <option key={m.id} value={m.id} style={{ background: '#1a1a1a' }}>
+                        {m.name} {m.isOwner ? '(Admin)' : `(${m.role === 'clen' ? 'Člen' : m.role === 'cteni' ? 'Čtení' : m.role})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex gap-3 pt-1">
                 <button type="submit" disabled={saving}
                   className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-60"

@@ -5,7 +5,7 @@ export const metadata = {
   title: 'Podmínky použití',
   description: 'Obchodní podmínky SaaS služby MujCRM – tarify, platby, zrušení předplatného, odpovědnost a rozhodné právo České republiky.',
   robots: { index: true, follow: true },
-  alternates: { canonical: 'https://mujcrm.vercel.app/podminky' },
+  alternates: { canonical: 'https://www.mujcrm.cz/podminky' },
 };
 
 function Breadcrumb({ current }: { current: string }) {
@@ -45,7 +45,8 @@ export default function PodminkyPage() {
               a zákazníkem při využívání cloudové CRM služby MujCRM.
             </p>
             <InfoBox>
-              <strong className="text-white">Poskytovatel:</strong> MujCRM s.r.o., Praha, Česká republika<br />
+              <strong className="text-white">Poskytovatel:</strong> Tomáš Vydra, IČO: 87149222<br />
+              Místo podnikání: K Vinařické hoře 1668, 273 09 Kladno<br />
               E-mail: <Link href="mailto:info@mujcrm.cz">info@mujcrm.cz</Link>
             </InfoBox>
             <p>
@@ -73,9 +74,11 @@ export default function PodminkyPage() {
             <p>MujCRM je cloudová SaaS platforma pro správu zákazníků, obchodních příležitostí a týmové spolupráce. Dostupné tarify:</p>
             <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
               {[
-                ['Free', 'Zdarma', 'Až 50 kontaktů, 1 uživatel, základní CRM funkce, bez podpory'],
-                ['Medium', '590 Kč / měs. bez DPH', 'Neomezené kontakty, 5 uživatelů, pipeline, reporty, e-mailová podpora'],
-                ['Platinum', '1 490 Kč / měs. bez DPH', 'Vše v Medium + neomezení uživatelé, API přístup, prioritní podpora, SLA 99,9 %'],
+                ['Free', 'Zdarma', 'Základní CRM funkce, 1 uživatel, bez podpory'],
+                ['Start', '299 Kč / měs.', 'Správa kontaktů a firem, e-mailová schránka, úkoly, leady, pipeline, základní přehledy'],
+                ['Tým', '599 Kč / měs.', 'Vše ze Start + automatizace, reporting, kalendář, až 3 členové týmu'],
+                ['Business', '999 Kč / měs.', 'Vše z Tým + pokročilý reporting, export dat, prioritní podpora, až 10 členů týmu'],
+                ['Enterprise', '1 799 Kč / měs.', 'Vše z Business + API přístup, dedikovaný support, neomezený počet členů'],
               ].map(([plan, price, desc], i, arr) => (
                 <div
                   key={plan}
@@ -111,7 +114,7 @@ export default function PodminkyPage() {
             <ul>
               <li>Platby jsou zpracovávány prostřednictvím <strong className="text-white">Stripe, Inc.</strong> — certifikovaný PCI DSS poskytovatel platebních služeb.</li>
               <li>Předplatné je účtováno předem na zvolené fakturační období (měsíčně nebo ročně).</li>
-              <li>Všechny ceny jsou uvedeny <strong className="text-white">bez DPH</strong>. DPH je připočtena dle sazby platné v zemi zákazníka.</li>
+              <li>Všechny uvedené ceny jsou <strong className="text-white">konečné</strong>.</li>
               <li>Faktury jsou vystavovány elektronicky a zasílány na registrační e-mail zákazníka.</li>
               <li>Poskytovatel neúčtuje žádné skryté poplatky za aktivaci, migraci dat ani zrušení účtu.</li>
               <li>V případě neúspěšné platby je zákazník informován e-mailem. Přístup ke službě zůstane aktivní po dobu grace period 7 dnů.</li>

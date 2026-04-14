@@ -249,7 +249,13 @@ export default function OnboardingPage() {
             })}
           </div>
 
-          <div className="flex items-center gap-3 mt-8">
+          {!selected && (
+            <p className="text-xs mt-5 text-center" style={{ color: 'rgba(237,237,237,0.3)' }}>
+              Vyber jednu z možností pro pokračování
+            </p>
+          )}
+
+          <div className="flex items-center gap-3 mt-4">
             {step > 0 && (
               <button onClick={prev}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all"
@@ -260,7 +266,7 @@ export default function OnboardingPage() {
             <button onClick={next} disabled={!selected || saving}
               className="flex-1 py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: selected ? 'linear-gradient(135deg, #00BFFF, #0090cc)' : 'rgba(255,255,255,0.1)', color: selected ? '#0a0a0a' : 'rgba(237,237,237,0.4)' }}>
-              {saving ? 'Ukládám...' : isLast ? 'Dokončit a spustit CRM →' : 'Pokračovat →'}
+              {saving ? 'Ukládám...' : isLast ? 'Zaregistrovat se do CRM →' : 'Pokračovat →'}
             </button>
           </div>
         </div>

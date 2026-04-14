@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import DateTimePicker from '@/app/components/DateTimePicker';
 
 type Activity = {
   id: string; typ: string; popis: string; datum: string;
@@ -61,9 +62,20 @@ const localNow = () => {
   };
 };
 
+const REMINDER_OPTIONS = [
+  { value: '', label: '— Bez připomínky —' },
+  { value: '15', label: '15 minut předem' },
+  { value: '30', label: '30 minut předem' },
+  { value: '60', label: '1 hodinu předem' },
+  { value: '120', label: '2 hodiny předem' },
+  { value: '1440', label: '1 den předem' },
+  { value: '2880', label: '2 dny předem' },
+];
+
+type TeamMember = { id: string; name: string; email: string; role: string; isOwner: boolean };
 const emptyForm = () => {
   const { date, time } = localNow();
-  return { typ: 'schuzka', popis: '', datum_date: date, cas_od: time, cas_do: '', misto: '', contact_id: '', deal_id: '' };
+  return { typ: 'schuzka', popis: '', datum_date: date, cas_od: time, cas_do: '', misto: '', contact_id: '', deal_id: '', reminder: '', assigned_to: '' };
 };
 
 const SELECT = 'id, typ, popis, datum, cas_do, misto, contact_id, deal_id, created_at, contacts(jmeno, prijmeni), deals(nazev)';
@@ -80,6 +92,7 @@ export default function ActivitiesPage() {
   const [editActivity, setEditActivity] = useState<Activity | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   // Inline new contact
   const [showNewContact, setShowNewContact] = useState(false);
@@ -100,6 +113,7 @@ export default function ActivitiesPage() {
     fetchActivities();
     supabase.from('contacts').select('id, jmeno, prijmeni').order('jmeno').then(({ data }) => setContacts(data ?? []));
     supabase.from('deals').select('id, nazev').order('nazev').then(({ data }) => setDeals((data as Deal[]) ?? []));
+    fetch('/api/team/members').then(r => r.json()).then(d => setTeamMembers(d.members ?? []));
   }, []);
 
   const fetchActivities = async () => {
@@ -125,8 +139,23 @@ export default function ActivitiesPage() {
     setShowModal(true);
   };
 
-  const openEdit = (a: Activity) => {
+  const openEdit = async (a: Activity) => {
     setEditActivity(a);
+    let reminder = '';
+    if (a.datum) {
+      const { data: notif } = await supabase
+        .from('notification_queue')
+        .select('scheduled_at')
+        .eq('source_type', 'activity')
+        .eq('source_id', a.id)
+        .eq('sent', false)
+        .maybeSingle();
+      if (notif?.scheduled_at) {
+        const diff = Math.round((new Date(a.datum).getTime() - new Date(notif.scheduled_at).getTime()) / 60000);
+        const match = [15, 30, 60, 120, 1440, 2880].find(v => Math.abs(v - diff) < 5);
+        if (match) reminder = String(match);
+      }
+    }
     setForm({
       typ: a.typ,
       popis: a.popis,
@@ -136,6 +165,8 @@ export default function ActivitiesPage() {
       misto: a.misto ?? '',
       contact_id: a.contact_id ?? '',
       deal_id: a.deal_id ?? '',
+      reminder,
+      assigned_to: '',
     });
     setShowNewContact(false);
     setNewContact({ jmeno: '', prijmeni: '', email: '' });
@@ -187,6 +218,7 @@ export default function ActivitiesPage() {
       misto: form.misto.trim() || null,
       contact_id: form.contact_id || null,
       deal_id: form.deal_id || null,
+      assigned_to: form.assigned_to || null,
     };
 
     if (editActivity) {
@@ -206,6 +238,25 @@ export default function ActivitiesPage() {
           deal_id: form.deal_id || null,
           activity_id: editActivity.id,
         }, { onConflict: 'activity_id' });
+        // Update notification
+        await supabase.from('notification_queue').delete().eq('source_type', 'activity').eq('source_id', editActivity.id).eq('sent', false);
+        if (form.reminder && form.datum_date && form.cas_od) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const scheduledAt = new Date(new Date(`${form.datum_date}T${form.cas_od}`).getTime() - parseInt(form.reminder) * 60 * 1000);
+            if (scheduledAt > new Date()) {
+              await supabase.from('notification_queue').insert({
+                user_id: user.id,
+                title: form.popis.trim(),
+                body: `Připomínka: ${TYPES.find(t => t.id === form.typ)?.label ?? form.typ}`,
+                url: '/dashboard/activities',
+                scheduled_at: scheduledAt.toISOString(),
+                source_type: 'activity',
+                source_id: editActivity.id,
+              });
+            }
+          }
+        }
       }
     } else {
       const { data: { user } } = await supabase.auth.getUser();
@@ -228,6 +279,20 @@ export default function ActivitiesPage() {
           deal_id: form.deal_id || null,
           activity_id: newActivity.id,
         });
+        if (form.reminder && form.datum_date && form.cas_od) {
+          const scheduledAt = new Date(new Date(`${form.datum_date}T${form.cas_od}`).getTime() - parseInt(form.reminder) * 60 * 1000);
+          if (scheduledAt > new Date()) {
+            await supabase.from('notification_queue').insert({
+              user_id: user.id,
+              title: `Připomínka: ${TYPES.find(t => t.id === form.typ)?.label ?? form.typ}`,
+              body: form.popis.trim(),
+              url: '/dashboard/activities',
+              scheduled_at: scheduledAt.toISOString(),
+              source_type: 'activity',
+              source_id: newActivity.id,
+            });
+          }
+        }
       }
     }
 
@@ -427,10 +492,12 @@ export default function ActivitiesPage() {
               {/* Datum */}
               <div>
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Datum</label>
-                <input type="date" value={form.datum_date}
-                  onChange={e => setForm(p => ({ ...p, datum_date: e.target.value }))}
-                  style={{ ...inputStyle, colorScheme: 'dark' }}
-                  onFocus={focus} onBlur={blur} />
+                <DateTimePicker
+                  value={form.datum_date}
+                  onChange={v => setForm(p => ({ ...p, datum_date: v }))}
+                  includeTime={false}
+                  placeholder="Vybrat datum"
+                />
               </div>
 
               {/* Čas od – do */}
@@ -453,6 +520,19 @@ export default function ActivitiesPage() {
                 </div>
                 <p className="text-xs mt-1" style={{ color: 'rgba(237,237,237,0.3)' }}>Čas od – do (volitelně)</p>
               </div>
+
+              {/* Připomínka */}
+              {form.cas_od && (
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Připomínka</label>
+                  <select value={form.reminder} onChange={e => setForm(p => ({ ...p, reminder: e.target.value }))}
+                    style={{ ...inputStyle, cursor: 'pointer' }} onFocus={focus} onBlur={blur}>
+                    {REMINDER_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value} style={{ background: '#1a1a1a' }}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Místo */}
               <div>
@@ -529,6 +609,21 @@ export default function ActivitiesPage() {
                   ))}
                 </select>
               </div>
+
+              {teamMembers.length > 1 && (
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Přiřadit členovi týmu</label>
+                  <select value={form.assigned_to} onChange={e => setForm(p => ({ ...p, assigned_to: e.target.value }))}
+                    style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="" style={{ background: '#1a1a1a' }}>– Nepřiřazeno –</option>
+                    {teamMembers.map(m => (
+                      <option key={m.id} value={m.id} style={{ background: '#1a1a1a' }}>
+                        {m.name} {m.isOwner ? '(Admin)' : `(${m.role === 'clen' ? 'Člen' : m.role === 'cteni' ? 'Čtení' : m.role})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-1">
                 <button type="submit" disabled={saving}

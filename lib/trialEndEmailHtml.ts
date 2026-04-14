@@ -1,4 +1,4 @@
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://mujcrm.vercel.app';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.mujcrm.cz';
 
 export function buildTrialEndEmailHtml(): string {
   return `<!DOCTYPE html>

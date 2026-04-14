@@ -137,7 +137,7 @@ export default function OgImage() {
             fontSize: "16px",
           }}
         >
-          mujcrm.vercel.app
+          www.mujcrm.cz
         </div>
       </div>
     ),

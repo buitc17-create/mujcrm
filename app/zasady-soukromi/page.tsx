@@ -5,7 +5,7 @@ export const metadata = {
   title: 'Zásady soukromí a cookies',
   description: 'Jak MujCRM používá cookies a sledovací technologie. Nezbytné, analytické a marketingové cookies – správa souhlasu a kontaktní informace.',
   robots: { index: true, follow: true },
-  alternates: { canonical: 'https://mujcrm.vercel.app/zasady-soukromi' },
+  alternates: { canonical: 'https://www.mujcrm.cz/zasady-soukromi' },
 };
 
 function Breadcrumb({ current }: { current: string }) {
@@ -41,7 +41,7 @@ export default function ZasadySoukromiPage() {
 
           <Section title="1. Úvod">
             <p>
-              Tato stránka vysvětluje, jak MujCRM s.r.o. používá cookies a podobné sledovací technologie,
+              Tato stránka vysvětluje, jak Tomáš Vydra (provozovatel služby MujCRM) používá cookies a podobné sledovací technologie,
               jaké informace shromažďujeme a jak s nimi nakládáme. Podrobné informace o zpracování
               osobních údajů najdete v našem{' '}
               <Link href="/gdpr">dokumentu GDPR</Link>.
@@ -148,7 +148,9 @@ export default function ZasadySoukromiPage() {
               className="rounded-xl px-5 py-4 text-sm leading-relaxed"
               style={{ background: 'rgba(0,191,255,0.05)', border: '1px solid rgba(0,191,255,0.12)' }}
             >
-              <strong className="text-white">MujCRM s.r.o.</strong><br />
+              <strong className="text-white">Tomáš Vydra</strong><br />
+              IČO: 87149222<br />
+              Místo podnikání: K Vinařické hoře 1668, 273 09 Kladno<br />
               E-mail: <Link href="mailto:info@mujcrm.cz">info@mujcrm.cz</Link><br />
               Více o ochraně osobních údajů: <Link href="/gdpr">GDPR dokument</Link>
             </div>

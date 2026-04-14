@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   alternates: {
-    canonical: "https://mujcrm.vercel.app",
+    canonical: "https://www.mujcrm.cz",
   },
 };
 
@@ -13,7 +13,6 @@ import DashboardMock from './components/DashboardMock';
 import HowItWorks from './components/HowItWorks';
 import ForWho from './components/ForWho';
 import Features from './components/Features';
-import Testimonials from './components/Testimonials';
 import Pricing from './components/Pricing';
 import SupportFAQ from './components/SupportFAQ';
 import ContactForm from './components/ContactForm';
@@ -36,7 +35,6 @@ export default function Home() {
           <HowItWorks />
           <ForWho />
           <section id="funkce"><Features /></section>
-          <Testimonials />
           <section id="pricing"><Pricing /></section>
           <section id="podpora"><SupportFAQ /></section>
           <section id="kontakt"><ContactForm /></section>

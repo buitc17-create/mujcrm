@@ -4,6 +4,7 @@ import Link from 'next/link';
 import GuidedTour from './GuidedTour';
 import TourButton from './TourButton';
 import TrialBanner from './TrialBanner';
+import TrialExpiredModal from './TrialExpiredModal';
 
 const tagColors: Record<string, string> = {
   zákazník: '#00BFFF',
@@ -45,6 +46,10 @@ export default async function DashboardPage() {
   if (!user) redirect('/auth/login');
 
   const { data: profile } = await supabase.from('profiles').select('plan, trial_ends_at').eq('id', user.id).single();
+
+  const isTrialExpired = profile?.plan === 'trial' && profile?.trial_ends_at
+    ? new Date(profile.trial_ends_at) < new Date()
+    : false;
 
   const name = (user.user_metadata?.full_name as string)?.split(' ')[0]
     || user.email?.split('@')[0]
@@ -193,6 +198,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+      <TrialExpiredModal show={isTrialExpired} />
       <GuidedTour userName={name} />
 
       <TrialBanner plan={profile?.plan ?? null} trialEndsAt={profile?.trial_ends_at ?? null} />

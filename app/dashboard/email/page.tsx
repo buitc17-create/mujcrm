@@ -155,6 +155,9 @@ export default function EmailPage() {
   }, [loadEmails, syncFolder]);
 
   // ─── Initial load ─────────────────────────────────────────────────────────
+  const activeFolderRef = useRef('INBOX');
+  useEffect(() => { activeFolderRef.current = activeFolder; }, [activeFolder]);
+
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -170,6 +173,23 @@ export default function EmailPage() {
     };
     load();
   }, [supabase, loadEmails, initFolders]);
+
+  // ─── Auto-polling každé 2 minuty ──────────────────────────────────────────
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const folder = activeFolderRef.current;
+      if (!folder || folder === VIRTUAL_STARRED) return;
+      try {
+        await fetch('/api/email/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder }),
+        });
+        await loadEmails(folder);
+      } catch { /* tiché selhání */ }
+    }, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [loadEmails]);
 
   // ─── Actions ──────────────────────────────────────────────────────────────
   const callAction = (action: string, emailId: string, extra?: object) =>

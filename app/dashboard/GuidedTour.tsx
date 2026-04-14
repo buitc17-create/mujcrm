@@ -132,7 +132,7 @@ export default function GuidedTour({ userName }: { userName: string }) {
       tour.addStep({
         id: 'leady',
         title: icon('<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/>') + 'Leady' + iconEnd,
-        text: 'Spravuj potenciální zákazníky. Sleduj jejich status, přidávej follow-upy a jedním klikem je převeď na zákazníka.',
+        text: 'Spravuj potenciální zákazníky v tabulce nebo Kanban pohledu. U každého leadu vidíš cenu, popis, aktivní email sekvenci a stav. Přidávej follow-upy a jedním klikem leada převeď na zákazníka.',
         attachTo: { element: '[data-tour="nav-leady"]', on: 'right' },
         buttons: [back, next],
       })
@@ -141,7 +141,7 @@ export default function GuidedTour({ userName }: { userName: string }) {
       tour.addStep({
         id: 'zakaznici',
         title: icon('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>') + 'Zákazníci' + iconEnd,
-        text: 'Kompletní databáze tvých zákazníků. Kontakty, historie komunikace, propojené zakázky a aktivity.',
+        text: 'Kompletní databáze zákazníků s kontakty, historií komunikace a propojenými zakázkami. Nastav datum narození a systém automaticky odešle přání přes narozeninovou sekvenci.',
         attachTo: { element: '[data-tour="nav-zakaznici"]', on: 'right' },
         buttons: [back, next],
       })
@@ -191,7 +191,16 @@ export default function GuidedTour({ userName }: { userName: string }) {
         buttons: [back, next],
       })
 
-      // 10. Tým
+      // 10. Automatizace
+      tour.addStep({
+        id: 'automatizace',
+        title: icon('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>') + 'Automatizace' + iconEnd,
+        text: 'Vytvárej emailové sekvence s libovolným počtem kroků a časovými odstupy. Spusť sekvenci přímo z detailu leadu – systém pak odesílá emaily automaticky. Nastav narozeninovou sekvenci pro zákazníky a přání se odešlou sama.',
+        attachTo: { element: '[data-tour="nav-automatizace"]', on: 'right' },
+        buttons: [back, next],
+      })
+
+      // 11. Tým
       tour.addStep({
         id: 'tym',
         title: icon('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>') + 'Tým' + iconEnd,
@@ -200,7 +209,7 @@ export default function GuidedTour({ userName }: { userName: string }) {
         buttons: [back, next],
       })
 
-      // 11. Nastavení
+      // 12. Nastavení
       tour.addStep({
         id: 'nastaveni',
         title: icon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>') + 'Nastavení' + iconEnd,
@@ -209,7 +218,7 @@ export default function GuidedTour({ userName }: { userName: string }) {
         buttons: [back, next],
       })
 
-      // 12. Rychlé akce
+      // 13. Rychlé akce
       tour.addStep({
         id: 'rychle-akce',
         title: icon('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>') + 'Rychlé akce' + iconEnd,
@@ -218,7 +227,7 @@ export default function GuidedTour({ userName }: { userName: string }) {
         buttons: [back, next],
       })
 
-      // 13. Závěr
+      // 14. Závěr
       tour.addStep({
         id: 'finish',
         title: icon('<polyline points="20 6 9 17 4 12"/>') + 'Jsi připraven!' + iconEnd,

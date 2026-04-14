@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { ImapFlow } from 'imapflow';
+import { decryptPassword } from '@/lib/emailCrypto';
 
 function detectFolderType(path: string, flags: Set<string>, specialUse?: string): string {
   if (specialUse === '\\Sent' || flags.has('\\Sent')) return 'sent';
@@ -46,7 +47,7 @@ export async function POST() {
     host: settings.imap_host,
     port: settings.imap_port ?? 993,
     secure: settings.imap_secure ?? true,
-    auth: { user: settings.smtp_user, pass: settings.smtp_password },
+    auth: { user: settings.smtp_user, pass: decryptPassword(settings.smtp_password) },
     logger: false,
   });
 

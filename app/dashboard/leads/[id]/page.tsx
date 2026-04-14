@@ -13,7 +13,11 @@ type Lead = {
   telefon: string | null; firma: string | null; zdroj: string;
   lead_status_id: string | null; skore: number; poznamky: string | null;
   konvertovan: boolean; created_at: string; contact_id: string | null;
+  cena: number | null; popis: string | null;
 };
+
+type Enrollment = { id: string; current_step: number; status: string; enrolled_at: string; automation_sequences: { name: string }[] | { name: string } | null };
+type Sequence = { id: string; name: string; description: string | null };
 
 type LeadStatus = {
   id: string; nazev: string; barva: string; poradi: number;
@@ -98,6 +102,19 @@ export default function LeadDetailPage() {
   // Email composer
   const [showEmail, setShowEmail] = useState(false);
 
+  // Enrollment
+  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [sequences, setSequences] = useState<Sequence[]>([]);
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [selectedSeqId, setSelectedSeqId] = useState('');
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollError, setEnrollError] = useState('');
+  const [stopping, setStopping] = useState(false);
+
+  // Cena editing
+  const [editingCena, setEditingCena] = useState(false);
+  const [cenaVal, setCenaVal] = useState('');
+
   // Convert modal
   const [showConvert, setShowConvert] = useState(false);
   const [convForm, setConvForm] = useState({ createDeal: true, nazevObchodu: '', hodnota: '' });
@@ -125,20 +142,31 @@ export default function LeadDetailPage() {
       statusData = created ?? [];
     }
 
-    const [{ data: leadData }, { data: fuData }] = await Promise.all([
+    const [{ data: leadData }, { data: fuData }, { data: enrollData }] = await Promise.all([
       supabase.from('leads').select('*').eq('id', id).single(),
       supabase.from('lead_followups').select('*').eq('lead_id', id).order('datum', { ascending: false }),
+      supabase.from('automation_enrollments').select('id, current_step, status, automation_sequences(name)').eq('lead_id', id).eq('status', 'active').limit(1),
     ]);
 
     if (!leadData) { router.push('/dashboard/leads'); return; }
     setStatuses(statusData ?? []);
     setLead(leadData as Lead);
     setFollowups(fuData ?? []);
+    setEnrollment((enrollData?.[0] as unknown as Enrollment) ?? null);
+    setCenaVal((leadData as Lead).cena != null ? String((leadData as Lead).cena) : '');
     setConvForm(p => ({ ...p, nazevObchodu: (leadData as Lead).firma || `${(leadData as Lead).jmeno} ${(leadData as Lead).prijmeni ?? ''}`.trim() }));
     setLoading(false);
   }, [id]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+    fetch('/api/automations/sequences')
+      .then(r => r.json())
+      .then(d => {
+        setSequences(d.sequences ?? []);
+        if (d.sequences?.length > 0) setSelectedSeqId(d.sequences[0].id);
+      });
+  }, [loadData]);
 
   const statusInfo = useCallback((id: string | null) => {
     if (!id) return statuses[0] ?? { id: '', nazev: '–', barva: '#6b7280' };
@@ -221,6 +249,41 @@ export default function LeadDetailPage() {
   const handleDeleteFollowUp = async (fuId: string) => {
     await supabase.from('lead_followups').delete().eq('id', fuId);
     setFollowups(prev => prev.filter(f => f.id !== fuId));
+  };
+
+  // ── Enrollment ────────────────────────────────────────────────────────────
+
+  const handleEnroll = async () => {
+    if (!selectedSeqId) return;
+    setEnrolling(true);
+    setEnrollError('');
+    const res = await fetch('/api/automations/enroll', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lead_id: id, sequence_id: selectedSeqId }),
+    });
+    const json = await res.json();
+    setEnrolling(false);
+    if (!res.ok) { setEnrollError(json.error ?? 'Chyba'); return; }
+    setEnrollment(json.enrollment);
+    setShowEnrollModal(false);
+    showToast(
+      json.emailSent ? 'Sekvence spuštěna, první email odeslán' : 'Sekvence spuštěna',
+      json.emailSent ? '#22C55E' : '#00BFFF',
+    );
+  };
+
+  const handleStopEnrollment = async () => {
+    if (!enrollment || !confirm('Zastavit sekvenci pro tento lead?')) return;
+    setStopping(true);
+    await fetch(`/api/automations/enroll/${enrollment.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'stopped', stopped_reason: 'Ručně zastaveno' }),
+    });
+    setStopping(false);
+    setEnrollment(null);
+    showToast('Sekvence zastavena', '#f59e0b');
   };
 
   // ── Conversion ────────────────────────────────────────────────────────────
@@ -370,6 +433,19 @@ export default function LeadDetailPage() {
             </div>
           </div>
 
+          {/* Popis */}
+          <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <h2 className="text-sm font-bold text-white mb-3">Popis leadu</h2>
+            <textarea
+              rows={3}
+              defaultValue={lead.popis ?? ''}
+              onBlur={e => { const val = e.target.value; if (val !== (lead.popis ?? '')) updateField({ popis: val || null }); }}
+              placeholder="Krátký popis leadu, co hledá, kontext…"
+              style={{ ...inputStyle, resize: 'vertical', lineHeight: '1.6', fontSize: 13 }}
+              onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.4)')}
+            />
+          </div>
+
           {/* Notes */}
           <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <h2 className="text-sm font-bold text-white mb-3">Poznámky</h2>
@@ -471,6 +547,52 @@ export default function LeadDetailPage() {
             </div>
           )}
 
+          {/* Automation Section */}
+          <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-white">Email sekvence</h2>
+              {!enrollment && sequences.length > 0 && (
+                <button
+                  onClick={() => { setShowEnrollModal(true); setEnrollError(''); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
+                  style={{ background: 'rgba(0,191,255,0.1)', border: '1px solid rgba(0,191,255,0.25)', color: '#00BFFF' }}
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Spustit
+                </button>
+              )}
+            </div>
+            {enrollment ? (
+              <div>
+                <div className="flex items-start gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: '#00BFFF' }} />
+                  <div>
+                    <p className="text-sm font-semibold text-white">
+                      {Array.isArray(enrollment.automation_sequences)
+                        ? enrollment.automation_sequences[0]?.name
+                        : (enrollment.automation_sequences as { name: string } | null)?.name}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: 'rgba(237,237,237,0.4)' }}>
+                      Krok {enrollment.current_step} odeslán · aktivní
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleStopEnrollment}
+                  disabled={stopping}
+                  className="w-full py-2 rounded-xl text-xs font-semibold"
+                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', cursor: stopping ? 'not-allowed' : 'pointer', opacity: stopping ? 0.6 : 1 }}
+                >
+                  {stopping ? 'Zastavuji…' : 'Zastavit sekvenci'}
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs" style={{ color: 'rgba(237,237,237,0.35)' }}>
+                {sequences.length === 0 ? 'Nejprve vytvořte sekvenci v Automatizacích.' : 'Žádná aktivní sekvence. Klikněte Spustit.'}
+              </p>
+            )}
+          </div>
+
           {/* Quick stats */}
           <div className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <h2 className="text-sm font-bold text-white mb-4">Přehled</h2>
@@ -497,10 +619,115 @@ export default function LeadDetailPage() {
                   {sr.label}
                 </span>
               </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs" style={{ color: 'rgba(237,237,237,0.4)' }}>Cena</span>
+                {editingCena ? (
+                  <input
+                    type="number" min={0} value={cenaVal}
+                    onChange={e => setCenaVal(e.target.value)}
+                    onBlur={() => {
+                      const val = cenaVal ? parseFloat(cenaVal) : null;
+                      updateField({ cena: val });
+                      setEditingCena(false);
+                    }}
+                    onKeyDown={e => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); if (e.key === 'Escape') { setCenaVal(lead.cena != null ? String(lead.cena) : ''); setEditingCena(false); } }}
+                    autoFocus
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(0,191,255,0.4)', borderRadius: 6, padding: '2px 8px', color: '#fff', fontSize: 13, outline: 'none', width: 110, textAlign: 'right' }}
+                  />
+                ) : (
+                  <button onClick={() => setEditingCena(true)}
+                    className="text-sm font-bold text-white transition-colors"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '1px 4px', borderRadius: 4 }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#00BFFF')}
+                    onMouseLeave={e => (e.currentTarget.style.color = '#fff')}
+                    title="Klikněte pro úpravu">
+                    {lead.cena != null ? lead.cena.toLocaleString('cs-CZ') + ' Kč' : <span style={{ color: 'rgba(237,237,237,0.3)', fontSize: 12 }}>+ Přidat</span>}
+                  </button>
+                )}
+              </div>
+              {enrollment && (
+                <div className="pt-1 mt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span className="text-xs block mb-1" style={{ color: 'rgba(237,237,237,0.4)' }}>Aktivní sekvence</span>
+                  <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: 'rgba(0,191,255,0.1)', color: '#00BFFF', border: '1px solid rgba(0,191,255,0.25)' }}>
+                    ▶ {Array.isArray(enrollment.automation_sequences) ? enrollment.automation_sequences[0]?.name : (enrollment.automation_sequences as { name: string } | null)?.name} · krok {enrollment.current_step + 1}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* ── Enroll modal ── */}
+      {showEnrollModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setShowEnrollModal(false)} />
+          <div className="relative w-full max-w-sm rounded-2xl p-6" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-base font-bold text-white">Spustit sekvenci</h2>
+                <p className="text-xs mt-0.5" style={{ color: 'rgba(237,237,237,0.4)' }}>
+                  Pro {lead.jmeno} {lead.prijmeni ?? ''}
+                </p>
+              </div>
+              <button onClick={() => setShowEnrollModal(false)} style={{ color: 'rgba(237,237,237,0.4)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            {!lead.email && (
+              <div className="mb-4 px-3 py-2.5 rounded-xl text-xs" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+                Lead nemá emailovou adresu — přidej ji nejdříve.
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3 mb-5">
+              {sequences.map(seq => (
+                <button
+                  key={seq.id}
+                  type="button"
+                  onClick={() => setSelectedSeqId(seq.id)}
+                  className="text-left p-3 rounded-xl transition-all"
+                  style={{
+                    background: selectedSeqId === seq.id ? 'rgba(0,191,255,0.1)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${selectedSeqId === seq.id ? 'rgba(0,191,255,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: selectedSeqId === seq.id ? '#00BFFF' : 'rgba(237,237,237,0.2)' }} />
+                    <span className="text-sm font-semibold" style={{ color: selectedSeqId === seq.id ? '#00BFFF' : '#fff' }}>{seq.name}</span>
+                  </div>
+                  {seq.description && (
+                    <p className="text-xs mt-1 ml-4" style={{ color: 'rgba(237,237,237,0.4)' }}>{seq.description}</p>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {enrollError && (
+              <div className="mb-4 px-3 py-2.5 rounded-xl text-xs" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+                {enrollError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleEnroll}
+                disabled={enrolling || !lead.email || !selectedSeqId}
+                className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a', cursor: (enrolling || !lead.email) ? 'not-allowed' : 'pointer' }}
+              >
+                {enrolling ? 'Spouštím…' : 'Spustit sekvenci'}
+              </button>
+              <button type="button" onClick={() => setShowEnrollModal(false)}
+                className="px-4 py-3 rounded-xl text-sm font-semibold"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.7)' }}>
+                Zrušit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Follow-up modal ── */}
       {showFuModal && (

@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description:
     "Odpovědi na nejčastější otázky o MujCRM. Návody pro správu zákazníků, obchodní pipeline, fakturaci a technickou podporu. Vše v češtině.",
   robots: { index: true, follow: true },
-  alternates: { canonical: "https://mujcrm.vercel.app/znalostni-baze" },
+  alternates: { canonical: "https://www.mujcrm.cz/znalostni-baze" },
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {

@@ -92,30 +92,6 @@ const plans = [
 
 export default function Pricing() {
   const [yearly, setYearly] = useState(false);
-  const [loading, setLoading] = useState<string | null>(null);
-
-  async function handleCheckout(priceId: string, planKey: string) {
-    if (planKey === 'ENTERPRISE') {
-      window.location.href = '#kontakt';
-      return;
-    }
-    setLoading(planKey);
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else if (res.status === 401) {
-        window.location.href = '/auth/login';
-      }
-    } finally {
-      setLoading(null);
-    }
-  }
 
   return (
     <section className="relative py-24 px-6 overflow-hidden">
@@ -176,7 +152,9 @@ export default function Pricing() {
           {plans.map((plan) => {
             const priceId = yearly ? plan.yearlyPriceId : plan.monthlyPriceId;
             const displayPrice = yearly ? plan.yearlyPrice : plan.monthlyPrice;
-            const isLoading = loading === plan.key;
+            const href = plan.key === 'ENTERPRISE'
+              ? 'mailto:info@mujcrm.cz'
+              : '/onboarding';
 
             return (
               <div
@@ -238,21 +216,20 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                <button
-                  onClick={() => handleCheckout(priceId, plan.key)}
-                  disabled={isLoading}
+                <a
+                  href={href}
                   className={plan.ctaStyle === 'cyan' ? 'btn-cyan' : 'btn-outline'}
-                  style={{ display: 'block', textAlign: 'center', padding: '12px 20px', borderRadius: '12px', fontSize: '14px', fontWeight: 600, width: '100%', opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'wait' : 'pointer' }}
+                  style={{ display: 'block', textAlign: 'center', padding: '12px 20px', borderRadius: '12px', fontSize: '14px', fontWeight: 600, width: '100%' }}
                 >
-                  {isLoading ? 'Přesměrování...' : plan.cta}
-                </button>
+                  {plan.cta}
+                </a>
               </div>
             );
           })}
         </div>
 
         <p className="text-center text-xs mt-8" style={{ color: 'rgba(237,237,237,0.3)' }}>
-          Všechny ceny jsou bez DPH. Plán lze kdykoli zrušit nebo změnit.
+          Uvedené ceny jsou konečné. Plán lze kdykoli zrušit nebo změnit.
         </p>
       </div>
     </section>

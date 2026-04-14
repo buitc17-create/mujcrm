@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
+import { decryptPassword } from '@/lib/emailCrypto';
 
 export async function POST(request: Request) {
   const contentType = request.headers.get('content-type') || '';
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
       host: settings.smtp_host,
       port: settings.smtp_port,
       secure: settings.smtp_secure,
-      auth: { user: settings.smtp_user, pass: settings.smtp_password },
+      auth: { user: settings.smtp_user, pass: decryptPassword(settings.smtp_password) },
     });
 
     await transporter.sendMail({

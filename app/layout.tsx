@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import CookieConsent from "./components/CookieConsent";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -8,7 +9,7 @@ const inter = Inter({
   display: "swap",
 });
 
-const BASE_URL = "https://mujcrm.vercel.app";
+const BASE_URL = "https://www.mujcrm.cz";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -30,9 +31,9 @@ export const metadata: Metadata = {
     "CRM software česká republika",
     "crm zdarma",
   ],
-  authors: [{ name: "MujCRM s.r.o." }],
-  creator: "MujCRM s.r.o.",
-  publisher: "MujCRM s.r.o.",
+  authors: [{ name: "Tomáš Vydra" }],
+  creator: "Tomáš Vydra",
+  publisher: "Tomáš Vydra",
   robots: {
     index: true,
     follow: true,
@@ -105,23 +106,39 @@ const jsonLd = {
       name: "Free",
       price: "0",
       priceCurrency: "CZK",
-      description: "Až 50 kontaktů, 1 uživatel, základní CRM funkce",
+      description: "Základní CRM funkce, 1 uživatel",
     },
     {
       "@type": "Offer",
-      name: "Medium",
-      price: "590",
+      name: "Start",
+      price: "299",
       priceCurrency: "CZK",
       billingIncrement: "P1M",
-      description: "Neomezené kontakty, 5 uživatelů, pipeline, reporty",
+      description: "Správa kontaktů, pipeline, e-mailová schránka, leady",
     },
     {
       "@type": "Offer",
-      name: "Platinum",
-      price: "1490",
+      name: "Tým",
+      price: "599",
       priceCurrency: "CZK",
       billingIncrement: "P1M",
-      description: "Neomezení uživatelé, API přístup, prioritní podpora, SLA 99,9 %",
+      description: "Vše ze Start + automatizace, reporting, až 3 členové týmu",
+    },
+    {
+      "@type": "Offer",
+      name: "Business",
+      price: "999",
+      priceCurrency: "CZK",
+      billingIncrement: "P1M",
+      description: "Pokročilý reporting, export dat, prioritní podpora, až 10 členů",
+    },
+    {
+      "@type": "Offer",
+      name: "Enterprise",
+      price: "1799",
+      priceCurrency: "CZK",
+      billingIncrement: "P1M",
+      description: "API přístup, dedikovaný support, neomezený počet členů",
     },
   ],
   featureList: [
@@ -156,6 +173,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col" style={{ background: '#0a0a0a', color: '#ededed' }}>
         {children}
+        <CookieConsent />
       </body>
     </html>
   );

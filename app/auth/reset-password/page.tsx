@@ -27,7 +27,7 @@ export default function ResetPasswordPage() {
     setLoading(true);
     setError('');
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset`,
+      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
     });
     if (error) {
       setError('Nepodařilo se odeslat e-mail. Zkontroluj adresu a zkus to znovu.');

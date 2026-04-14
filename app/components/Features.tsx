@@ -1,10 +1,13 @@
 'use client';
 
+import Link from 'next/link';
+
 const features = [
   {
     title: 'Správa zákazníků',
     desc: 'Kompletní profily kontaktů s historií komunikace, poznámkami a přílohami. Nikdy nezapomeneš na kontext.',
     accent: '#00BFFF',
+    href: '/funkce/sprava-zakazniku',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -18,6 +21,7 @@ const features = [
     title: 'Přehledná analytika',
     desc: 'Grafy, trendové reporty a klíčové metriky na jednom dashboardu. Rozhoduj se na základě dat, ne tušení.',
     accent: '#7B2FFF',
+    href: '/funkce/analytika',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <line x1="18" y1="20" x2="18" y2="10"/>
@@ -29,8 +33,9 @@ const features = [
   },
   {
     title: 'Komunikace',
-    desc: 'E-maily, poznámky a aktivity přímo u zákazníka. Celý tým vidí totéž — žádné informační sila.',
+    desc: 'E‑maily, poznámky a aktivity přímo u zákazníka. Veškerá komunikace přehledně na jednom místě.',
     accent: '#00BFFF',
+    href: '/funkce/komunikace',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
@@ -42,6 +47,7 @@ const features = [
     title: 'Bezpečnost a soukromí',
     desc: 'Data v EU, šifrování end-to-end, zálohy každých 24 hodin a GDPR compliance. Tvoje data jsou tvoje.',
     accent: '#7B2FFF',
+    href: '/funkce/bezpecnost-a-soukromi',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -52,9 +58,10 @@ const features = [
     title: 'Automatizace a úkoly',
     desc: 'Nastav si automatické připomínky, follow-upy a workflow. Nechej rutinní práci na systému.',
     accent: '#00BFFF',
+    href: '/funkce/automatizace',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
       </svg>
     ),
   },
@@ -62,6 +69,7 @@ const features = [
     title: 'Integrace a API',
     desc: 'Propoj MujCRM s nástroji, které už používáš — e-mail, fakturace, kalendář nebo vlastní systémy přes API.',
     accent: '#7B2FFF',
+    href: '/funkce/integrace-a-api',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="16 18 22 12 16 6"/>
@@ -101,20 +109,21 @@ export default function Features() {
         {/* Grid 3×2 */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {features.map((f) => (
-            <div
+            <Link
               key={f.title}
+              href={f.href}
               className="group rounded-2xl p-6 flex flex-col gap-4"
               style={{
                 background: 'rgba(255,255,255,0.025)',
                 border: '1px solid rgba(255,255,255,0.07)',
                 transition: 'border-color 0.2s, background 0.2s',
-                cursor: 'default',
+                textDecoration: 'none',
               }}
-              onMouseEnter={e => {
+              onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = f.accent + '40';
                 e.currentTarget.style.background = f.accent + '06';
               }}
-              onMouseLeave={e => {
+              onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)';
                 e.currentTarget.style.background = 'rgba(255,255,255,0.025)';
               }}
@@ -136,11 +145,14 @@ export default function Features() {
 
               {/* Arrow hint */}
               <div className="mt-auto pt-2">
-                <span className="text-xs font-semibold" style={{ color: f.accent + 'aa' }}>
+                <span
+                  className="text-xs font-semibold transition-all"
+                  style={{ color: f.accent + 'aa' }}
+                >
                   Více o funkci →
                 </span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

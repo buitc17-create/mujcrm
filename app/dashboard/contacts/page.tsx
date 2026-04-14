@@ -31,13 +31,26 @@ export default function ContactsPage() {
   const [search, setSearch] = useState('');
   const [tagFilter, setTagFilter] = useState('Vše');
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [isMember, setIsMember] = useState(false);
 
   const fetchContacts = async () => {
-    const { data } = await supabase
-      .from('contacts')
-      .select('id, jmeno, prijmeni, email, telefon, firma, tag, created_at')
-      .order('created_at', { ascending: false });
-    setContacts(data ?? []);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+
+    const membersData = await fetch('/api/team/members').then(r => r.json());
+    const member = membersData.ownerId && membersData.ownerId !== user.id;
+    setIsMember(member);
+
+    if (member) {
+      const res = await fetch('/api/team/member-contacts').then(r => r.json());
+      setContacts(res.contacts ?? []);
+    } else {
+      const { data } = await supabase
+        .from('contacts')
+        .select('id, jmeno, prijmeni, email, telefon, firma, tag, created_at')
+        .order('created_at', { ascending: false });
+      setContacts(data ?? []);
+    }
     setLoading(false);
   };
 
@@ -70,24 +83,26 @@ export default function ContactsPage() {
             {contacts.length} {contacts.length === 1 ? 'kontakt' : contacts.length < 5 ? 'kontakty' : 'kontaktů'} celkem
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/dashboard/contacts/import"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.8)' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Import CSV
-          </Link>
-          <Link
-            href="/dashboard/contacts/new"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
-            style={{ background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Přidat zákazníka
-          </Link>
-        </div>
+        {!isMember && (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/contacts/import"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.8)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import CSV
+            </Link>
+            <Link
+              href="/dashboard/contacts/new"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+              style={{ background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Přidat zákazníka
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -138,9 +153,13 @@ export default function ContactsPage() {
             {search || tagFilter !== 'Vše' ? 'Žádné výsledky' : 'Zatím žádní zákazníci'}
           </p>
           <p className="text-sm mb-4" style={{ color: 'rgba(237,237,237,0.4)' }}>
-            {search || tagFilter !== 'Vše' ? 'Zkus jiné hledání nebo filtr.' : 'Přidej prvního zákazníka a začni budovat svou databázi.'}
+            {search || tagFilter !== 'Vše'
+              ? 'Zkus jiné hledání nebo filtr.'
+              : isMember
+                ? 'Zákazníci se zobrazí, jakmile budou přiřazeni k tvým zakázkám nebo úkolům.'
+                : 'Přidej prvního zákazníka a začni budovat svou databázi.'}
           </p>
-          {!search && tagFilter === 'Vše' && (
+          {!search && tagFilter === 'Vše' && !isMember && (
             <Link href="/dashboard/contacts/new" className="text-sm font-semibold" style={{ color: '#00BFFF' }}>
               + Přidat zákazníka
             </Link>
@@ -203,21 +222,22 @@ export default function ContactsPage() {
                   <Link href={`/dashboard/contacts/${c.id}`}
                     className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
                     style={{ color: 'rgba(237,237,237,0.4)' }}
-                    title="Detail"
-                    onMouseEnter={undefined}>
+                    title="Detail">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   </Link>
-                  <button
-                    onClick={() => handleDelete(c.id, `${c.jmeno} ${c.prijmeni ?? ''}`.trim())}
-                    disabled={deleting === c.id}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
-                    style={{ color: 'rgba(239,68,68,0.5)' }}
-                    title="Smazat"
-                    onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(239,68,68,0.5)')}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                  </button>
+                  {!isMember && (
+                    <button
+                      onClick={() => handleDelete(c.id, `${c.jmeno} ${c.prijmeni ?? ''}`.trim())}
+                      disabled={deleting === c.id}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+                      style={{ color: 'rgba(239,68,68,0.5)' }}
+                      title="Smazat"
+                      onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(239,68,68,0.5)')}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    </button>
+                  )}
                 </div>
               </div>
             );

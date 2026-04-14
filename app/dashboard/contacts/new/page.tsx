@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+
+type TeamMember = { id: string; name: string; email: string; role: string; isOwner: boolean };
 
 const inputCls = 'w-full px-4 py-3 rounded-xl text-sm transition-all outline-none';
 const inputStyle = {
@@ -20,10 +22,15 @@ export default function NewContactPage() {
 
   const [form, setForm] = useState({
     jmeno: '', prijmeni: '', email: '', telefon: '',
-    firma: '', tag: 'zákazník', poznamky: '',
+    firma: '', tag: 'zákazník', poznamky: '', assigned_to: '', datum_narozeni: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    fetch('/api/team/members').then(r => r.json()).then(d => setTeamMembers(d.members ?? []));
+  }, []);
 
   const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
 
@@ -45,6 +52,8 @@ export default function NewContactPage() {
       firma: form.firma.trim() || null,
       tag: form.tag,
       poznamky: form.poznamky.trim() || null,
+      assigned_to: form.assigned_to || null,
+      datum_narozeni: form.datum_narozeni || null,
     });
 
     if (err) {
@@ -128,6 +137,15 @@ export default function NewContactPage() {
             </Field>
           </div>
 
+          <div className="grid sm:grid-cols-2 gap-5">
+            <Field label="Datum narození" id="datum_narozeni">
+              <input id="datum_narozeni" type="date" value={form.datum_narozeni} onChange={e => set('datum_narozeni', e.target.value)}
+                className={inputCls} style={{ ...inputStyle, colorScheme: 'dark' }}
+                onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')}
+                onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+            </Field>
+          </div>
+
           <Field label="Poznámky" id="poznamky">
             <textarea id="poznamky" value={form.poznamky} onChange={e => set('poznamky', e.target.value)}
               placeholder="Interní poznámky ke kontaktu…" rows={4}
@@ -135,6 +153,20 @@ export default function NewContactPage() {
               onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')}
               onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
           </Field>
+
+          {teamMembers.length > 1 && (
+            <Field label="Přiřadit členovi týmu" id="assigned_to">
+              <select id="assigned_to" value={form.assigned_to} onChange={e => set('assigned_to', e.target.value)}
+                className={inputCls} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="" style={{ background: '#1a1a1a' }}>– Nepřiřazeno –</option>
+                {teamMembers.map(m => (
+                  <option key={m.id} value={m.id} style={{ background: '#1a1a1a' }}>
+                    {m.name} {m.isOwner ? '(Admin)' : `(${m.role === 'clen' ? 'Člen' : m.role === 'cteni' ? 'Čtení' : m.role})`}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
         </div>
 
         {error && (

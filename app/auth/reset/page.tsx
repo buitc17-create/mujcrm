@@ -13,11 +13,21 @@ export default function ResetPage() {
 
   useEffect(() => {
     const handleReset = async () => {
-      // PKCE flow: token_hash jako query param
       const searchParams = new URLSearchParams(window.location.search)
       const tokenHash = searchParams.get('token_hash')
       const type = searchParams.get('type')
+      const code = searchParams.get('code')
 
+      // PKCE flow: code exchange
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (!error) {
+          router.replace('/auth/update-password')
+          return
+        }
+      }
+
+      // Legacy flow: token_hash
       if (tokenHash && type === 'recovery') {
         const { error } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,

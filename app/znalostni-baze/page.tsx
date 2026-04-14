@@ -34,7 +34,7 @@ const sections = [
       },
       {
         q: 'Jak pozvat kolegy do svého workspace?',
-        a: 'Přejděte do Nastavení → Tým a klikněte na „Pozvat člena". Zadejte e-mail kolegy a vyberte jeho roli (Správce, Obchodník, Čtenář). Kolega obdrží pozvánku e-mailem. Na tarifu Free je k dispozici 1 uživatel, na Medium 5 uživatelů.',
+        a: 'Přejděte do Nastavení → Tým a klikněte na „Pozvat člena". Zadejte e-mail kolegy a vyberte jeho roli (Člen nebo Čtení). Kolega obdrží pozvánku e-mailem. Na tarifu Start pracujete sami, na Tým jsou k dispozici až 3 členové, na Business až 10 a na Enterprise neomezený počet.',
       },
     ],
   },
@@ -65,7 +65,7 @@ const sections = [
       },
       {
         q: 'Mohu přiřadit zákazníka konkrétnímu obchodníkovi?',
-        a: 'Ano. V detailu zákazníka klikněte na pole „Zodpovědný obchodník" a vyberte člena týmu. Správce může filtrovat zákazníky a obchody dle přiřazeného obchodníka a sledovat výkonnost celého týmu.',
+        a: 'Ano. V detailu zákazníka klikněte na pole „Přiřazený člen" a vyberte člena týmu. Správce pak vidí, kdo má daného zákazníka nebo obchod na starosti.',
       },
     ],
   },
@@ -97,7 +97,7 @@ const sections = [
       },
       {
         q: 'Jak sledovat výkonnost a reporty?',
-        a: 'Přejděte do sekce Reporty v levém menu. Najdete zde přehled pipeline podle fází, výkonnost jednotlivých obchodníků, míru úspěšnosti a predikci tržeb. Reporty lze exportovat do CSV nebo PDF.',
+        a: 'Přejděte do sekce Reporty v levém menu. Najdete zde přehled pipeline podle fází, míru úspěšnosti obchodů a predikci tržeb. Data lze exportovat do CSV.',
       },
     ],
   },
@@ -109,24 +109,24 @@ const sections = [
         <line x1="1" y1="10" x2="23" y2="10"/>
       </svg>
     ),
-    title: 'Fakturace a platby',
+    title: 'Předplatné a platby',
     color: '#7B2FFF',
     items: [
       {
         q: 'Jak změnit nebo upgradovat tarif?',
-        a: 'Přejděte do Nastavení → Předplatné. Zde vidíte svůj aktuální plán a tlačítko „Změnit plán". Upgrade je okamžitý — nový plán se aktivuje ihned a platba se poměrně přepočítá na zbývající dny fakturačního období.',
+        a: 'Přejděte do Nastavení → Předplatné. Zde vidíte svůj aktuální plán a ostatní dostupné tarify. Po kliknutí na „Přejít na X" se změna naplánuje ke konci aktuálního fakturačního období — stávající plán zůstane aktivní až do jeho konce, poté se automaticky aktivuje nový.',
       },
       {
         q: 'Jak zrušit předplatné?',
-        a: 'V Nastavení → Předplatné klikněte na „Zrušit předplatné". Přístup k placenému plánu zůstane aktivní do konce zaplaceného období. Po jeho uplynutí se účet automaticky přepne na Free plán — data zůstanou zachována.',
+        a: 'V Nastavení → Předplatné klikněte na „Spravovat předplatné". Přístup k placenému plánu zůstane aktivní do konce zaplaceného období. Po jeho uplynutí se účet automaticky přepne na bezplatný plán — data zůstanou zachována.',
       },
       {
         q: 'Kde najdu faktury a daňové doklady?',
-        a: 'Přejděte do Nastavení → Fakturace. Všechny vydané faktury jsou ke stažení ve formátu PDF. Faktury jsou vystavovány automaticky vždy na začátku nového fakturačního období a zasílány na registrační e-mail.',
+        a: 'Přejděte do Nastavení → Předplatné. Všechny vydané faktury jsou ke stažení ve formátu PDF. Faktury jsou vystavovány automaticky vždy na začátku nového fakturačního období a zasílány na registrační e-mail.',
       },
       {
         q: 'Přijímáte platby kartou i fakturou?',
-        a: 'Standardně platby probíhají kartou přes Stripe (Visa, Mastercard, Amex). Platbu fakturou (bankovním převodem) nabízíme pro roční předplatné na tarifu Platinum. Kontaktujte nás na info@mujcrm.cz.',
+        a: 'Standardně platby probíhají kartou přes Stripe (Visa, Mastercard, Amex). Platbu fakturou (bankovním převodem) nabízíme pro roční předplatné na tarifu Enterprise. Kontaktujte nás na info@mujcrm.cz.',
       },
       {
         q: 'Mohu získat vrácení peněz?',
@@ -156,7 +156,7 @@ const sections = [
       },
       {
         q: 'Jak kontaktovat zákaznickou podporu?',
-        a: 'Podporu kontaktujete e-mailem na info@mujcrm.cz nebo přes kontaktní formulář níže. Na tarifu Platinum nabízíme prioritní podporu s garantovanou dobou odpovědi do 4 hodin v pracovní dny. Free a Medium tarif: odpověď do 24 hodin.',
+        a: 'Podporu kontaktujete e-mailem na info@mujcrm.cz nebo přes kontaktní formulář níže. Na tarifu Business a Enterprise nabízíme prioritní podporu s garantovanou dobou odpovědi do 4 hodin v pracovní dny. Tarify Start a Tým: odpověď do 24 hodin.',
       },
       {
         q: 'Jak exportovat svá data?',

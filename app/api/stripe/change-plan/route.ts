@@ -33,8 +33,9 @@ export async function POST(req: Request) {
 
   // Načti aktuální subscription
   const sub = await stripe.subscriptions.retrieve(profile.stripe_subscription_id) as Stripe.Subscription
-  const currentItemId = sub.items.data[0]?.id
-  const currentPeriodEnd = sub.current_period_end // unix timestamp
+  const currentItem = sub.items.data[0]
+  const currentItemId = currentItem?.id
+  const currentPeriodEnd = currentItem?.current_period_end ?? sub.billing_cycle_anchor // unix timestamp
 
   // Zjisti, zda již existuje schedule
   const existingScheduleId = (sub as Stripe.Subscription & { schedule?: string | null }).schedule

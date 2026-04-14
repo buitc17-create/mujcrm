@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PLANS } from '@/lib/stripe-config';
 
 const plans = [
@@ -58,28 +58,29 @@ const plans = [
   },
 ];
 
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 export default function BillingPage() {
   const [yearly, setYearly] = useState(false);
-  const [loading, setLoading] = useState<string | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<string | null>(null);
+  const [hasStripe, setHasStripe] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<string | null>(null);
+  const [pendingPlanDate, setPendingPlanDate] = useState<string | null>(null);
+  const [changing, setChanging] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
-  async function handleCheckout(priceId: string, planKey: string) {
-    if (planKey === 'ENTERPRISE') {
-      window.location.href = 'mailto:info@mujcrm.cz';
-      return;
-    }
-    setLoading(planKey);
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId }),
-      });
-      const data = await res.json();
-      if (data.url) window.location.href = data.url;
-    } finally {
-      setLoading(null);
-    }
-  }
+  useEffect(() => {
+    fetch('/api/stripe/subscription-info').then(r => r.json()).then(d => {
+      setCurrentPlan((d.plan ?? 'free').toUpperCase());
+      setHasStripe(d.hasStripe ?? false);
+      setHasSubscription(d.hasSubscription ?? false);
+      setPendingPlan(d.pendingPlan ? d.pendingPlan.toUpperCase() : null);
+      setPendingPlanDate(d.pendingPlanDate ?? null);
+    });
+  }, []);
 
   async function handlePortal() {
     const res = await fetch('/api/stripe/portal', { method: 'POST' });
@@ -87,12 +88,58 @@ export default function BillingPage() {
     if (data.url) window.location.href = data.url;
   }
 
+  async function handleChangePlan(priceId: string, planKey: string) {
+    setChanging(planKey);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/stripe/change-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setPendingPlan(data.pendingPlan.toUpperCase());
+        setPendingPlanDate(data.periodEnd);
+        setMsg({ type: 'ok', text: `Plán ${planKey} bude aktivován ${formatDate(data.periodEnd)}.` });
+      } else {
+        setMsg({ type: 'err', text: data.error ?? 'Chyba při změně plánu.' });
+      }
+    } catch {
+      setMsg({ type: 'err', text: 'Nepodařilo se změnit plán.' });
+    } finally {
+      setChanging(null);
+    }
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-black text-white mb-1">Fakturace a tarify</h1>
+        <h1 className="text-2xl font-black text-white mb-1">Předplatné</h1>
         <p className="text-sm" style={{ color: 'rgba(237,237,237,0.45)' }}>Vyber plán který ti nejvíce vyhovuje.</p>
       </div>
+
+      {/* Naplánovaná změna */}
+      {pendingPlan && pendingPlanDate && (
+        <div className="mb-6 px-4 py-3 rounded-xl flex items-center gap-3" style={{ background: 'rgba(255,180,0,0.08)', border: '1px solid rgba(255,180,0,0.25)' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB400" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span className="text-sm" style={{ color: 'rgba(255,180,0,0.9)' }}>
+            Naplánovaná změna na plán <strong>{pendingPlan}</strong> — aktivuje se {formatDate(pendingPlanDate)}.
+          </span>
+        </div>
+      )}
+
+      {/* Zpráva o výsledku */}
+      {msg && (
+        <div className="mb-5 px-4 py-3 rounded-xl text-sm font-medium" style={msg.type === 'ok'
+          ? { background: 'rgba(0,210,110,0.08)', border: '1px solid rgba(0,210,110,0.25)', color: 'rgba(0,210,110,0.9)' }
+          : { background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.25)', color: 'rgba(255,80,80,0.9)' }
+        }>
+          {msg.text}
+        </div>
+      )}
 
       {/* Toggle */}
       <div className="flex items-center gap-4 mb-8">
@@ -112,13 +159,15 @@ export default function BillingPage() {
           </button>
         </div>
 
-        <button
-          onClick={handlePortal}
-          className="ml-auto text-sm font-semibold px-4 py-2 rounded-xl transition-all"
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.6)' }}
-        >
-          Spravovat předplatné →
-        </button>
+        {hasStripe && (
+          <button
+            onClick={handlePortal}
+            className="ml-auto text-sm font-semibold px-4 py-2 rounded-xl transition-all"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.6)' }}
+          >
+            Spravovat předplatné →
+          </button>
+        )}
       </div>
 
       {/* Plans grid */}
@@ -126,18 +175,35 @@ export default function BillingPage() {
         {plans.map((plan) => {
           const priceId = yearly ? plan.yearlyPriceId : plan.monthlyPriceId;
           const displayPrice = yearly ? plan.yearlyPrice : plan.monthlyPrice;
-          const isLoading = loading === plan.key;
+          const isCurrentPlan = currentPlan === plan.key;
+          const isPendingPlan = pendingPlan === plan.key;
 
           return (
             <div
               key={plan.key}
               className="rounded-2xl p-6 flex flex-col gap-5 relative"
-              style={plan.highlight
-                ? { background: 'rgba(0,191,255,0.06)', border: '1px solid rgba(0,191,255,0.35)', boxShadow: '0 0 40px rgba(0,191,255,0.08)' }
-                : { background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }
+              style={isCurrentPlan
+                ? { background: 'rgba(123,47,255,0.08)', border: '1px solid rgba(123,47,255,0.4)', boxShadow: '0 0 40px rgba(123,47,255,0.1)' }
+                : isPendingPlan
+                  ? { background: 'rgba(255,180,0,0.05)', border: '1px solid rgba(255,180,0,0.35)', boxShadow: '0 0 30px rgba(255,180,0,0.07)' }
+                  : plan.highlight
+                    ? { background: 'rgba(0,191,255,0.06)', border: '1px solid rgba(0,191,255,0.35)', boxShadow: '0 0 40px rgba(0,191,255,0.08)' }
+                    : { background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }
               }
             >
-              {plan.badge && (
+              {isCurrentPlan && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+                  style={{ background: 'linear-gradient(135deg, #7B2FFF, #5a1fd1)', color: '#fff' }}>
+                  Váš aktuální plán
+                </div>
+              )}
+              {isPendingPlan && !isCurrentPlan && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+                  style={{ background: 'linear-gradient(135deg, #FFB400, #cc8f00)', color: '#0a0a0a' }}>
+                  Naplánováno
+                </div>
+              )}
+              {!isCurrentPlan && !isPendingPlan && plan.badge && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
                   style={{ background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a' }}>
                   {plan.badge}
@@ -170,24 +236,61 @@ export default function BillingPage() {
                 ))}
               </ul>
 
-              <button
-                onClick={() => handleCheckout(priceId, plan.key)}
-                disabled={isLoading}
-                className="w-full py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-60"
-                style={plan.highlight
-                  ? { background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a' }
-                  : { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(237,237,237,0.8)' }
-                }
-              >
-                {isLoading ? 'Přesměrování...' : plan.key === 'ENTERPRISE' ? 'Kontaktovat' : `Vybrat ${plan.name}`}
-              </button>
+              {isCurrentPlan ? (
+                <div
+                  className="w-full py-3 rounded-xl text-sm font-bold text-center"
+                  style={{ background: 'rgba(123,47,255,0.15)', border: '1px solid rgba(123,47,255,0.3)', color: 'rgba(180,140,255,0.8)', cursor: 'default' }}
+                >
+                  Aktivní plán
+                </div>
+              ) : isPendingPlan ? (
+                <div
+                  className="w-full py-3 rounded-xl text-sm font-bold text-center"
+                  style={{ background: 'rgba(255,180,0,0.1)', border: '1px solid rgba(255,180,0,0.3)', color: 'rgba(255,180,0,0.8)', cursor: 'default' }}
+                >
+                  Aktivuje se {pendingPlanDate ? formatDate(pendingPlanDate) : ''}
+                </div>
+              ) : plan.key === 'ENTERPRISE' ? (
+                <a
+                  href="mailto:info@mujcrm.cz"
+                  className="w-full py-3 rounded-xl text-sm font-bold transition-all block text-center"
+                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(237,237,237,0.8)' }}
+                >
+                  Kontaktovat
+                </a>
+              ) : hasSubscription ? (
+                // Existující předplatné — naplánuj změnu ke konci období
+                <button
+                  disabled={changing === plan.key}
+                  onClick={() => handleChangePlan(priceId, plan.key)}
+                  className="w-full py-3 rounded-xl text-sm font-bold transition-all"
+                  style={plan.highlight
+                    ? { background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a', opacity: changing === plan.key ? 0.6 : 1 }
+                    : { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(237,237,237,0.8)', opacity: changing === plan.key ? 0.6 : 1 }
+                  }
+                >
+                  {changing === plan.key ? 'Plánuji…' : `Přejít na ${plan.name}`}
+                </button>
+              ) : (
+                // Nový zákazník — přímý checkout
+                <a
+                  href={`/api/stripe/checkout?priceId=${priceId}`}
+                  className="w-full py-3 rounded-xl text-sm font-bold transition-all block text-center"
+                  style={plan.highlight
+                    ? { background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a' }
+                    : { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(237,237,237,0.8)' }
+                  }
+                >
+                  {`Vybrat ${plan.name}`}
+                </a>
+              )}
             </div>
           );
         })}
       </div>
 
       <p className="text-center text-xs mt-6" style={{ color: 'rgba(237,237,237,0.3)' }}>
-        Všechny ceny jsou bez DPH. Plán lze kdykoli zrušit nebo změnit.
+        Změna plánu se projeví po skončení aktuálního fakturačního období. Plán lze kdykoli zrušit nebo změnit.
       </p>
     </div>
   );

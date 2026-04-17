@@ -1046,7 +1046,8 @@ export default function DealsPage() {
                     {loadingItems ? (
                       <div className="flex items-center justify-center py-12" style={{ color: 'rgba(237,237,237,0.3)' }}>Načítám…</div>
                     ) : (
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                      <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', fontSize: 12 }}>
                         <thead>
                           <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                             {['Název','Popis','Mn.','Jedn.','Cena/ks','Sleva %','Celkem',''].map(h => (
@@ -1098,6 +1099,7 @@ export default function DealsPage() {
                           )}
                         </tbody>
                       </table>
+                      </div>
                     )}
                   </div>
 

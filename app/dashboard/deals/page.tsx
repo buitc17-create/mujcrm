@@ -919,7 +919,7 @@ export default function DealsPage() {
           <>
             <div className="fixed inset-0 z-40" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={closeDetail} />
             <div className="fixed right-0 top-0 h-full z-50 flex flex-col"
-              style={{ width: dealTab === 'polozky' ? 720 : 400, background: '#141414', borderLeft: '1px solid rgba(255,255,255,0.1)', boxShadow: '-8px 0 32px rgba(0,0,0,0.4)', transition: 'width 0.2s ease' }}>
+              style={{ width: dealTab === 'polozky' ? 'min(720px, 100vw)' : 'min(400px, 100vw)', background: '#141414', borderLeft: '1px solid rgba(255,255,255,0.1)', boxShadow: '-8px 0 32px rgba(0,0,0,0.4)', transition: 'width 0.2s ease' }}>
 
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-3.5 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>

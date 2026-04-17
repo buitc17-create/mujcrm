@@ -300,93 +300,80 @@ export default function TeamPage() {
             const avatarColor = AVATAR_COLORS[i % AVATAR_COLORS.length];
             return (
               <div key={m.id}
-                className="flex items-center gap-4 px-5 py-4 rounded-2xl group"
+                className="flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 rounded-2xl group"
                 style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}
               >
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                  style={{ background: avatarColor + '22', color: avatarColor }}>
-                  {initials(m.member_name, m.member_email)}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-white">{m.member_name ?? m.member_email}</p>
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: sm.bg, color: sm.color }}>
-                      {sm.label}
-                    </span>
+                {/* Top row: Avatar + Info */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                    style={{ background: avatarColor + '22', color: avatarColor }}>
+                    {initials(m.member_name, m.member_email)}
                   </div>
-                  <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(237,237,237,0.4)' }}>{m.member_email}</p>
-                </div>
-
-                {/* Resend invite */}
-                {m.status === 'pozvan' && (
-                  <button
-                    onClick={() => handleResendInvite(m.member_email, m.member_name, m.role)}
-                    className="text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                    style={{ color: 'rgba(0,191,255,0.7)' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#00BFFF')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(0,191,255,0.7)')}
-                  >
-                    Znovu odeslat
-                  </button>
-                )}
-
-                {/* Send report button — only active members who have accepted */}
-                {m.status === 'aktivni' && m.member_user_id && (
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => handleSendReport(m.member_user_id!, m.id)}
-                      disabled={sendingReport === m.id}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
-                      style={{
-                        background: 'rgba(123,47,255,0.1)',
-                        border: '1px solid rgba(123,47,255,0.25)',
-                        color: '#a855f7',
-                      }}
-                      onMouseEnter={e => { if (sendingReport !== m.id) e.currentTarget.style.background = 'rgba(123,47,255,0.18)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(123,47,255,0.1)'; }}
-                    >
-                      {sendingReport === m.id ? (
-                        <>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 1s linear infinite' }}>
-                            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                          </svg>
-                          Odesílám…
-                        </>
-                      ) : (
-                        <>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M4 4l16 8-16 8V4z"/>
-                          </svg>
-                          Odeslat výkaz
-                        </>
-                      )}
-                    </button>
-                    {reportMsg?.id === m.id && (
-                      <span className="text-xs" style={{ color: reportMsg.ok ? '#10b981' : '#f87171' }}>
-                        {reportMsg.text}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-white">{m.member_name ?? m.member_email}</p>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: sm.bg, color: sm.color }}>
+                        {sm.label}
                       </span>
-                    )}
+                    </div>
+                    <p className="text-xs mt-0.5 truncate" style={{ color: 'rgba(237,237,237,0.4)' }}>{m.member_email}</p>
                   </div>
-                )}
+                </div>
 
-                {/* Role select */}
-                <select value={m.role} onChange={e => handleRoleChange(m.id, e.target.value)}
-                  className="text-xs rounded-lg px-2.5 py-1.5 outline-none"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.7)', cursor: 'pointer' }}>
-                  {ROLES.map(r => <option key={r.id} value={r.id} style={{ background: '#1a1a1a' }}>{r.label}</option>)}
-                </select>
+                {/* Bottom row on mobile / right side on desktop: actions */}
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:flex-shrink-0">
+                  {/* Resend invite */}
+                  {m.status === 'pozvan' && (
+                    <button
+                      onClick={() => handleResendInvite(m.member_email, m.member_name, m.role)}
+                      className="text-xs font-semibold sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                      style={{ color: 'rgba(0,191,255,0.7)' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#00BFFF')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(0,191,255,0.7)')}
+                    >
+                      Znovu odeslat
+                    </button>
+                  )}
 
-                {/* Remove */}
-                <button onClick={() => handleRemove(m.id, m.member_email)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                  style={{ color: 'rgba(239,68,68,0.5)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(239,68,68,0.5)')}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                </button>
+                  {/* Send report button */}
+                  {m.status === 'aktivni' && m.member_user_id && (
+                    <div className="flex flex-col items-start sm:items-end gap-1">
+                      <button
+                        onClick={() => handleSendReport(m.member_user_id!, m.id)}
+                        disabled={sendingReport === m.id}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+                        style={{ background: 'rgba(123,47,255,0.1)', border: '1px solid rgba(123,47,255,0.25)', color: '#a855f7' }}
+                        onMouseEnter={e => { if (sendingReport !== m.id) e.currentTarget.style.background = 'rgba(123,47,255,0.18)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(123,47,255,0.1)'; }}
+                      >
+                        {sendingReport === m.id ? (
+                          <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Odesílám…</>
+                        ) : (
+                          <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4l16 8-16 8V4z"/></svg>Odeslat výkaz</>
+                        )}
+                      </button>
+                      {reportMsg?.id === m.id && (
+                        <span className="text-xs" style={{ color: reportMsg.ok ? '#10b981' : '#f87171' }}>{reportMsg.text}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Role select */}
+                  <select value={m.role} onChange={e => handleRoleChange(m.id, e.target.value)}
+                    className="text-xs rounded-lg px-2.5 py-1.5 outline-none"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.7)', cursor: 'pointer' }}>
+                    {ROLES.map(r => <option key={r.id} value={r.id} style={{ background: '#1a1a1a' }}>{r.label}</option>)}
+                  </select>
+
+                  {/* Remove */}
+                  <button onClick={() => handleRemove(m.id, m.member_email)}
+                    className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    style={{ color: 'rgba(239,68,68,0.5)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(239,68,68,0.5)')}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                  </button>
+                </div>
               </div>
             );
           })}

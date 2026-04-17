@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { openCookieSettings } from '@/app/components/CookieConsent';
@@ -780,12 +780,16 @@ export default function SettingsPage() {
       {/* ══════════════════════════════════════
           GOOGLE KALENDÁŘ
       ══════════════════════════════════════ */}
-      <GoogleCalendarCard showToast={showToast} />
+      <Suspense fallback={null}>
+        <GoogleCalendarCard showToast={showToast} />
+      </Suspense>
 
       {/* ══════════════════════════════════════
           MICROSOFT KALENDÁŘ
       ══════════════════════════════════════ */}
-      <MicrosoftCalendarCard showToast={showToast} />
+      <Suspense fallback={null}>
+        <MicrosoftCalendarCard showToast={showToast} />
+      </Suspense>
 
       {/* ══════════════════════════════════════
           MODAL — Smazat účet

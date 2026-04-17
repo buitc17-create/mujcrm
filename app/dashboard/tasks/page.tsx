@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import DateTimePicker from '@/app/components/DateTimePicker';
+import Link from 'next/link';
 
 type Task = {
   id: string; nazev: string; popis: string | null; deadline: string | null;
@@ -462,10 +463,10 @@ export default function TasksPage() {
                               {overdue && 'Po termínu · '}{new Date(task.deadline).toLocaleDateString('cs-CZ')}
                             </span>
                           )}
-                          {c && (
-                            <span className="text-xs" style={{ color: 'rgba(237,237,237,0.4)' }}>
+                          {c && task.contact_id && (
+                            <Link href={`/dashboard/contacts/${task.contact_id}`} className="text-xs hover:text-[#00BFFF] transition-colors" style={{ color: 'rgba(237,237,237,0.4)' }}>
                               👤 {c.jmeno} {c.prijmeni ?? ''}
-                            </span>
+                            </Link>
                           )}
                           {task.assigned_to && teamMembers.length > 1 && (() => {
                             const m = teamMembers.find(tm => tm.id === task.assigned_to);

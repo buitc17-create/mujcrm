@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import DateTimePicker from '@/app/components/DateTimePicker';
+import Link from 'next/link';
 
 type Activity = {
   id: string; typ: string; popis: string; datum: string;
@@ -410,10 +411,10 @@ export default function ActivitiesPage() {
                         <p className="text-sm text-white leading-relaxed">{activity.popis}</p>
                         {(c || d) && (
                           <div className="flex flex-wrap items-center gap-3 mt-2">
-                            {c && (
-                              <span className="text-xs" style={{ color: 'rgba(237,237,237,0.4)' }}>
+                            {c && activity.contact_id && (
+                              <Link href={`/dashboard/contacts/${activity.contact_id}`} className="text-xs hover:text-[#00BFFF] transition-colors" style={{ color: 'rgba(237,237,237,0.4)' }}>
                                 👤 {c.jmeno} {c.prijmeni ?? ''}
-                              </span>
+                              </Link>
                             )}
                             {d && (
                               <span className="text-xs" style={{ color: 'rgba(237,237,237,0.4)' }}>

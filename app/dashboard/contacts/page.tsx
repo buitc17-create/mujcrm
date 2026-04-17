@@ -195,7 +195,9 @@ export default function ContactsPage() {
 
                 {/* Name */}
                 <div>
-                  <p className="text-sm font-semibold text-white">{c.jmeno} {c.prijmeni}</p>
+                  <Link href={`/dashboard/contacts/${c.id}`} className="text-sm font-semibold text-white hover:text-[#00BFFF] transition-colors">
+                    {c.jmeno} {c.prijmeni}
+                  </Link>
                 </div>
 
                 {/* Firma */}

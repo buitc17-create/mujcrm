@@ -130,9 +130,17 @@ export default function DateTimePicker({ value, onChange, placeholder = 'Vybrat 
         onClick={() => {
           if (!open && btnRef.current) {
             const r = btnRef.current.getBoundingClientRect();
+            const dropW = 280;
             const dropH = includeTime ? 480 : 340;
-            const top = Math.min(r.top, window.innerHeight - dropH - 8);
-            setDropPos({ top: Math.max(8, top), left: r.right + 8 });
+            const isMobile = window.innerWidth < 640 || r.right + 8 + dropW > window.innerWidth;
+            if (isMobile) {
+              const top = Math.min(r.bottom + 4, window.innerHeight - dropH - 8);
+              const left = Math.max(8, Math.min(r.left, window.innerWidth - dropW - 8));
+              setDropPos({ top: Math.max(8, top), left });
+            } else {
+              const top = Math.min(r.top, window.innerHeight - dropH - 8);
+              setDropPos({ top: Math.max(8, top), left: r.right + 8 });
+            }
           }
           setOpen(o => !o);
         }}
@@ -160,6 +168,7 @@ export default function DateTimePicker({ value, onChange, placeholder = 'Vybrat 
             background: '#161618',
             border: '1px solid rgba(255,255,255,0.1)',
             minWidth: '280px',
+            maxWidth: 'calc(100vw - 16px)',
             boxShadow: '0 24px 64px rgba(0,0,0,0.75)',
           }}
         >

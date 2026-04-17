@@ -238,8 +238,9 @@ export default function EmailComposer({ to, toName, contactId, leadId, onClose, 
 
   const sep = <div style={{ width:1, height:18, background:'#e0e0e0', margin:'0 2px', flexShrink:0 }} />;
 
-  const W = maximized ? 'min(92vw, 860px)' : '580px';
-  const H = minimized ? 'auto' : maximized ? 'min(92vh, 740px)' : '560px';
+  const isMobileComposer = typeof window !== 'undefined' && window.innerWidth < 640;
+  const W = isMobileComposer ? '100vw' : maximized ? 'min(92vw, 860px)' : '580px';
+  const H = isMobileComposer ? '100dvh' : minimized ? 'auto' : maximized ? 'min(92vh, 740px)' : '560px';
 
   const fieldRow = { display:'flex', alignItems:'center', padding:'7px 16px', gap:10, borderBottom:'1px solid #e8e8e8', flexShrink:0 } as const;
   const label    = { color:'#888', fontSize:13, width:72, flexShrink:0 } as const;
@@ -256,8 +257,13 @@ export default function EmailComposer({ to, toName, contactId, leadId, onClose, 
       `}</style>
 
       <div ref={composerRef} style={{
-        position:'fixed', bottom:0, right:24, width:W, height:H,
-        background:'#fff', borderRadius:'8px 8px 0 0',
+        position:'fixed',
+        bottom: isMobileComposer ? 0 : 0,
+        right: isMobileComposer ? 0 : 24,
+        left: isMobileComposer ? 0 : 'auto',
+        top: isMobileComposer ? 0 : 'auto',
+        width: W, height: H,
+        background:'#fff', borderRadius: isMobileComposer ? 0 : '8px 8px 0 0',
         boxShadow:'0 8px 40px rgba(0,0,0,0.28), 0 0 0 1px rgba(0,0,0,0.12)',
         display:'flex', flexDirection:'column', zIndex:9999, overflow:'hidden',
         transition:'width 0.18s ease, height 0.18s ease',

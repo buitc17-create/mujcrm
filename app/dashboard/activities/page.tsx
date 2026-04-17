@@ -425,7 +425,7 @@ export default function ActivitiesPage() {
                         )}
                       </div>
                       {/* Actions */}
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">
+                      <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">
                         <button onClick={() => openEdit(activity)}
                           style={{ color: 'rgba(237,237,237,0.35)' }}
                           onMouseEnter={e => (e.currentTarget.style.color = '#00BFFF')}

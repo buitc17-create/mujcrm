@@ -448,10 +448,10 @@ export default function TasksPage() {
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold ${task.dokonceno ? 'line-through' : 'text-white'}`}
-                          style={{ color: task.dokonceno ? 'rgba(237,237,237,0.4)' : undefined }}>
+                        <button onClick={() => openEdit(task)} className={`text-sm font-semibold text-left w-full hover:underline ${task.dokonceno ? 'line-through' : 'text-white'}`}
+                          style={{ color: task.dokonceno ? 'rgba(237,237,237,0.4)' : undefined, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
                           {task.nazev}
-                        </p>
+                        </button>
                         {task.popis && (
                           <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'rgba(237,237,237,0.45)' }}>{task.popis}</p>
                         )}
@@ -493,7 +493,7 @@ export default function TasksPage() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex-shrink-0">
+                      <div className="flex items-center gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity mt-0.5 flex-shrink-0">
                         <button
                           onClick={() => openEdit(task)}
                           style={{ color: 'rgba(237,237,237,0.35)' }}

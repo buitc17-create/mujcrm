@@ -408,7 +408,7 @@ export default function ActivitiesPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-white leading-relaxed">{activity.popis}</p>
+                        <button onClick={() => openEdit(activity)} className="text-sm text-white leading-relaxed text-left w-full hover:underline" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>{activity.popis}</button>
                         {(c || d) && (
                           <div className="flex flex-wrap items-center gap-3 mt-2">
                             {c && activity.contact_id && (

@@ -93,6 +93,8 @@ export default function EmailPage() {
   const moveMenuRef = useRef<HTMLDivElement>(null);
 
   const { syncing, lastSync, triggerSync } = useEmailSync();
+  // Mobile navigation state: which pane is visible
+  const [mobilePane, setMobilePane] = useState<'list' | 'detail' | 'sidebar'>('list');
 
   // ─── Close menus on outside click ─────────────────────────────────────────
   useEffect(() => {
@@ -410,41 +412,50 @@ export default function EmailPage() {
   return (
     <div className="h-full flex flex-col" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}>
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0 gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Mobile: folder toggle */}
+          <button className="sm:hidden w-8 h-8 flex items-center justify-center rounded-lg"
+            style={{ color: 'rgba(237,237,237,0.5)', background: 'rgba(255,255,255,0.05)' }}
+            onClick={() => setMobilePane(p => p === 'sidebar' ? 'list' : 'sidebar')}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+          </button>
           <h1 className="text-lg font-black text-white">Email</h1>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,191,255,0.12)', color: '#00BFFF' }}>{emails.length}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Contact select — hidden on mobile */}
           <select onChange={e => { const c = contacts.find(c => c.id === e.target.value); if (c?.email) openCompose(c.email, `${c.jmeno} ${c.prijmeni ?? ''}`.trim()); e.target.value = ''; }}
-            defaultValue="" className="px-3 py-2 rounded-xl text-xs font-semibold"
+            defaultValue="" className="hidden sm:block px-3 py-2 rounded-xl text-xs font-semibold"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.7)', outline: 'none', cursor: 'pointer' }}>
             <option value="" disabled>Napsat zákazníkovi…</option>
             {contacts.map(c => <option key={c.id} value={c.id} style={{ background: '#1a1a1a' }}>{c.jmeno} {c.prijmeni ?? ''} — {c.email}</option>)}
           </select>
-          <div className="flex flex-col items-end gap-0.5">
-            <button onClick={onSync} disabled={syncing || folderSyncing}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold disabled:opacity-50"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.65)' }}>
-              <svg className={(syncing || folderSyncing) ? 'animate-spin' : ''} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-              </svg>
-              {(syncing || folderSyncing) ? 'Synchronizuji…' : 'Aktualizovat'}
-            </button>
-            {lastSync && <span className="text-xs" style={{ color: 'rgba(237,237,237,0.25)' }}>{fmtLS(lastSync)}</span>}
-          </div>
-          <button onClick={() => openCompose()} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
+          {/* Sync button — icon only on mobile */}
+          <button onClick={onSync} disabled={syncing || folderSyncing}
+            className="flex items-center gap-2 px-2 sm:px-3 py-2 rounded-xl text-xs font-semibold disabled:opacity-50"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.65)' }}
+            title="Aktualizovat">
+            <svg className={(syncing || folderSyncing) ? 'animate-spin' : ''} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            <span className="hidden sm:inline">{(syncing || folderSyncing) ? 'Synchronizuji…' : 'Aktualizovat'}</span>
+          </button>
+          <button onClick={() => openCompose()} className="flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-bold"
             style={{ background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Napsat email
+            <span className="hidden sm:inline">Napsat email</span>
           </button>
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* ── Col 1: Folders ── */}
-        <div className="flex flex-col flex-shrink-0 overflow-hidden" style={{ width: 200, borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className={`${mobilePane === 'sidebar' ? 'flex' : 'hidden'} sm:flex flex-col flex-shrink-0 overflow-hidden`}
+          style={{ width: mobilePane === 'sidebar' ? '100%' : 200, maxWidth: 200, borderRight: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="flex items-center justify-between px-3 py-2.5 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
             <span className="text-xs font-bold" style={{ color: 'rgba(237,237,237,0.4)' }}>Složky</span>
             <button onClick={refreshFolders} disabled={loadingFolders} style={{ color: 'rgba(237,237,237,0.3)' }}
@@ -459,7 +470,7 @@ export default function EmailPage() {
           <div className="flex-1 overflow-y-auto py-1">
             {/* Starred virtual folder */}
             {(() => { const a = activeFolder === VIRTUAL_STARRED; return (
-              <button onClick={() => switchFolder(VIRTUAL_STARRED)}
+              <button onClick={() => { switchFolder(VIRTUAL_STARRED); setMobilePane('list'); }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-left transition-all"
                 style={{ background: a ? 'rgba(251,191,36,0.08)' : 'transparent', borderLeft: a ? '2px solid #fbbf24' : '2px solid transparent', color: a ? '#fbbf24' : 'rgba(237,237,237,0.55)' }}>
                 <span style={{ flexShrink: 0, color: a ? '#fbbf24' : 'rgba(251,191,36,0.5)' }}><FolderIcon type="starred" size={14} /></span>
@@ -475,7 +486,7 @@ export default function EmailPage() {
                 const a = activeFolder === f.path;
                 const isDragOver = dragOverFolder === f.path;
                 return (
-                  <button key={f.id} onClick={() => switchFolder(f.path)}
+                  <button key={f.id} onClick={() => { switchFolder(f.path); setMobilePane('list'); }}
                     onDragOver={e => handleFolderDragOver(e, f.path)}
                     onDragLeave={() => setDragOverFolder(null)}
                     onDrop={e => handleFolderDrop(e, f.path)}
@@ -497,7 +508,8 @@ export default function EmailPage() {
         </div>
 
         {/* ── Col 2: Email list ── */}
-        <div className="flex flex-col flex-shrink-0 overflow-hidden" style={{ width: 340, borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className={`${mobilePane === 'list' ? 'flex' : 'hidden'} sm:flex flex-col flex-shrink-0 overflow-hidden`}
+          style={{ width: '100%', maxWidth: 340, borderRight: '1px solid rgba(255,255,255,0.06)' }}>
           {/* Search */}
           <div className="p-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
             <div className="relative">
@@ -611,7 +623,7 @@ export default function EmailPage() {
                     <div
                       draggable
                       onDragStart={ev => handleEmailDragStart(ev, e.id)}
-                      onClick={() => { setSelected(e); markAsRead(e); }}
+                      onClick={() => { setSelected(e); markAsRead(e); setMobilePane('detail'); }}
                       onDoubleClick={() => openEmailInNewWindow(e)}
                       onMouseEnter={() => setHoveredId(e.id)}
                       onMouseLeave={() => setHoveredId(null)}
@@ -723,7 +735,7 @@ export default function EmailPage() {
         </div>
 
         {/* ── Col 3: Detail ── */}
-        <div className="flex-1 overflow-y-auto">
+        <div className={`${mobilePane === 'detail' ? 'flex' : 'hidden'} sm:flex flex-col flex-1 overflow-y-auto`}>
           {!selected ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
@@ -737,9 +749,16 @@ export default function EmailPage() {
               <p className="text-xs mt-1" style={{ color: 'rgba(237,237,237,0.2)' }}>Dvojklik pro otevření v novém okně</p>
             </div>
           ) : (
-            <div className="p-6 max-w-2xl">
+            <div className="p-4 sm:p-6 max-w-2xl w-full">
+              {/* Mobile back button */}
+              <button className="sm:hidden flex items-center gap-2 text-sm mb-4"
+                style={{ color: 'rgba(237,237,237,0.5)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                onClick={() => { setMobilePane('list'); }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+                Zpět na seznam
+              </button>
               {/* Action row */}
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
                 <button onClick={ev => toggleFlag(selected, ev)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                   style={{ background: selected.is_flagged ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.05)', border: `1px solid ${selected.is_flagged ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.1)'}`, color: selected.is_flagged ? '#fbbf24' : 'rgba(237,237,237,0.5)' }}>

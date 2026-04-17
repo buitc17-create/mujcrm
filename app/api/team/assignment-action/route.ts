@@ -38,7 +38,7 @@ export async function PATCH(request: Request) {
   // Verify the item is assigned to this member
   const { data: item } = await admin
     .from(table)
-    .select('id, nazev, assigned_to')
+    .select('id, nazev, hodnota, assigned_to')
     .eq('id', id)
     .single()
 
@@ -76,6 +76,7 @@ export async function PATCH(request: Request) {
           appUrl: 'https://www.mujcrm.cz',
           mode: action,
           itemType: type as 'task' | 'deal',
+          itemValue: type === 'deal' ? (item as { hodnota?: number }).hodnota ?? null : null,
         })
         const subjectTypeLabel = type === 'deal' ? 'zakázku' : 'úkol'
         const transporter = nodemailer.createTransport({

@@ -83,8 +83,7 @@ export default function ContactsPage() {
             {contacts.length} {contacts.length === 1 ? 'kontakt' : contacts.length < 5 ? 'kontakty' : 'kontaktů'} celkem
           </p>
         </div>
-        {!isMember && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
             <Link
               href="/dashboard/contacts/import"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
@@ -102,7 +101,6 @@ export default function ContactsPage() {
               Přidat zákazníka
             </Link>
           </div>
-        )}
       </div>
 
       {/* Filters */}
@@ -225,19 +223,17 @@ export default function ContactsPage() {
                     title="Detail">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   </Link>
-                  {!isMember && (
-                    <button
-                      onClick={() => handleDelete(c.id, `${c.jmeno} ${c.prijmeni ?? ''}`.trim())}
-                      disabled={deleting === c.id}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
-                      style={{ color: 'rgba(239,68,68,0.5)' }}
-                      title="Smazat"
-                      onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
-                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(239,68,68,0.5)')}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleDelete(c.id, `${c.jmeno} ${c.prijmeni ?? ''}`.trim())}
+                    disabled={deleting === c.id}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+                    style={{ color: 'rgba(239,68,68,0.5)' }}
+                    title="Smazat"
+                    onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(239,68,68,0.5)')}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                  </button>
                 </div>
               </div>
             );

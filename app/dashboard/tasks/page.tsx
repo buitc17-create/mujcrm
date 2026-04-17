@@ -182,81 +182,129 @@ export default function TasksPage() {
     setSaving(true);
 
     if (editTask) {
-      const { data } = await supabase.from('tasks')
-        .update({
-          nazev: form.nazev.trim(),
-          popis: form.popis.trim() || null,
-          deadline: form.deadline || null,
-          contact_id: form.contact_id || null,
-          assigned_to: form.assigned_to || null,
-        })
-        .eq('id', editTask.id)
-        .select('id, nazev, popis, deadline, dokonceno, contact_id, created_at, contacts(jmeno, prijmeni)')
-        .single();
-      if (data) {
-        setTasks(prev => prev.map(t => t.id === editTask.id ? (data as unknown as Task) : t));
-        if (form.deadline) {
-          await supabase.from('calendar_events').upsert({
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setSaving(false); return; }
+      const isMember = ownerId !== null && ownerId !== user.id;
+
+      let updatedTask: Task | null = null;
+
+      if (isMember) {
+        const res = await fetch('/api/team/member-tasks', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: editTask.id,
             nazev: form.nazev.trim(),
-            typ: 'deadline',
-            datum: form.deadline.slice(0, 10),
-            cas_od: form.deadline.length >= 16 ? form.deadline.slice(11, 16) : null,
             popis: form.popis.trim() || null,
+            deadline: form.deadline || null,
             contact_id: form.contact_id || null,
-            task_id: editTask.id,
-          }, { onConflict: 'task_id' });
-        } else {
-          await supabase.from('calendar_events').delete().eq('task_id', editTask.id);
+            assigned_to: form.assigned_to || null,
+          }),
+        });
+        const json = await res.json();
+        if (json.task) updatedTask = json.task as Task;
+      } else {
+        const { data } = await supabase.from('tasks')
+          .update({
+            nazev: form.nazev.trim(),
+            popis: form.popis.trim() || null,
+            deadline: form.deadline || null,
+            contact_id: form.contact_id || null,
+            assigned_to: form.assigned_to || null,
+          })
+          .eq('id', editTask.id)
+          .select('id, nazev, popis, deadline, dokonceno, contact_id, created_at, contacts(jmeno, prijmeni)')
+          .single();
+        if (data) {
+          updatedTask = data as unknown as Task;
+          if (form.deadline) {
+            await supabase.from('calendar_events').upsert({
+              nazev: form.nazev.trim(),
+              typ: 'deadline',
+              datum: form.deadline.slice(0, 10),
+              cas_od: form.deadline.length >= 16 ? form.deadline.slice(11, 16) : null,
+              popis: form.popis.trim() || null,
+              contact_id: form.contact_id || null,
+              task_id: editTask.id,
+            }, { onConflict: 'task_id' });
+          } else {
+            await supabase.from('calendar_events').delete().eq('task_id', editTask.id);
+          }
         }
-        // Update notification
+      }
+
+      if (updatedTask) {
+        setTasks(prev => prev.map(t => t.id === editTask.id ? updatedTask! : t));
+        // Update notification reminder
         await supabase.from('notification_queue').delete().eq('source_type', 'task').eq('source_id', editTask.id).eq('sent', false);
         if (form.reminder && form.deadline && form.deadline.length >= 16) {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            const scheduledAt = new Date(new Date(form.deadline).getTime() - parseInt(form.reminder) * 60 * 1000);
-            if (scheduledAt > new Date()) {
-              await supabase.from('notification_queue').insert({
-                user_id: user.id,
-                title: form.nazev.trim(),
-                body: 'Připomínka úkolu',
-                url: '/dashboard/tasks',
-                scheduled_at: scheduledAt.toISOString(),
-                source_type: 'task',
-                source_id: editTask.id,
-              });
-            }
+          const scheduledAt = new Date(new Date(form.deadline).getTime() - parseInt(form.reminder) * 60 * 1000);
+          if (scheduledAt > new Date()) {
+            await supabase.from('notification_queue').insert({
+              user_id: user.id,
+              title: form.nazev.trim(),
+              body: 'Připomínka úkolu',
+              url: '/dashboard/tasks',
+              scheduled_at: scheduledAt.toISOString(),
+              source_type: 'task',
+              source_id: editTask.id,
+            });
           }
         }
       }
     } else {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSaving(false); return; }
-      const { data } = await supabase.from('tasks').insert({
-        user_id: ownerId ?? user.id,
-        nazev: form.nazev.trim(),
-        popis: form.popis.trim() || null,
-        deadline: form.deadline || null,
-        contact_id: form.contact_id || null,
-        assigned_to: form.assigned_to || null,
-        dokonceno: false,
-      }).select('id, nazev, popis, deadline, dokonceno, contact_id, assigned_to, created_at, contacts(jmeno, prijmeni)').single();
-      if (data) {
-        const newTask = data as unknown as Task;
-        setTasks(prev => [newTask, ...prev]);
-        if (form.deadline) {
-          await supabase.from('calendar_events').insert({
-            user_id: ownerId ?? user.id,
+
+      const isMember = ownerId !== null && ownerId !== user.id;
+      let newTask: Task | null = null;
+
+      if (isMember) {
+        // Member: use API route with admin client (bypasses RLS)
+        const res = await fetch('/api/team/member-tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             nazev: form.nazev.trim(),
-            typ: 'deadline',
-            datum: form.deadline.slice(0, 10),
-            cas_od: form.deadline.length >= 16 ? form.deadline.slice(11, 16) : null,
-            cas_do: null,
             popis: form.popis.trim() || null,
+            deadline: form.deadline || null,
             contact_id: form.contact_id || null,
-            deal_id: null,
-            task_id: newTask.id,
-          });
+            assigned_to: form.assigned_to || null,
+          }),
+        });
+        const json = await res.json();
+        if (json.task) newTask = json.task as Task;
+      } else {
+        const { data } = await supabase.from('tasks').insert({
+          user_id: user.id,
+          nazev: form.nazev.trim(),
+          popis: form.popis.trim() || null,
+          deadline: form.deadline || null,
+          contact_id: form.contact_id || null,
+          assigned_to: form.assigned_to || null,
+          dokonceno: false,
+        }).select('id, nazev, popis, deadline, dokonceno, contact_id, assigned_to, created_at, contacts(jmeno, prijmeni)').single();
+        if (data) {
+          newTask = data as unknown as Task;
+          if (form.deadline) {
+            await supabase.from('calendar_events').insert({
+              user_id: user.id,
+              nazev: form.nazev.trim(),
+              typ: 'deadline',
+              datum: form.deadline.slice(0, 10),
+              cas_od: form.deadline.length >= 16 ? form.deadline.slice(11, 16) : null,
+              cas_do: null,
+              popis: form.popis.trim() || null,
+              contact_id: form.contact_id || null,
+              deal_id: null,
+              task_id: newTask.id,
+            });
+          }
         }
+      }
+
+      if (newTask) {
+        setTasks(prev => [newTask!, ...prev]);
         if (form.reminder && form.deadline && form.deadline.length >= 16) {
           const scheduledAt = new Date(new Date(form.deadline).getTime() - parseInt(form.reminder) * 60 * 1000);
           if (scheduledAt > new Date()) {

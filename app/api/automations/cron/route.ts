@@ -19,6 +19,9 @@ export async function GET(request: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
 
+  const url = new URL(request.url);
+  const forceBirthday = url.searchParams.get('force_birthday') === '1';
+
   const supabase = getSupabase();
   const now = new Date();
 
@@ -28,8 +31,7 @@ export async function GET(request: Request) {
     .select(`
       id, user_id, lead_id, sequence_id, enrolled_at, current_step,
       leads(id, email, jmeno, prijmeni, konvertovan),
-      automation_sequences(id, name),
-      automation_steps(id, step_order, delay_days, subject, body, attachment_path, attachment_name)
+      automation_sequences(id, name, automation_steps(id, step_order, delay_days, subject, body, attachment_path, attachment_name))
     `)
     .eq('status', 'active');
 
@@ -47,10 +49,11 @@ export async function GET(request: Request) {
     processed++;
 
     const lead = Array.isArray(enrollment.leads) ? enrollment.leads[0] : enrollment.leads;
+    const seq = Array.isArray(enrollment.automation_sequences) ? enrollment.automation_sequences[0] : enrollment.automation_sequences;
     const steps = (
-      Array.isArray(enrollment.automation_steps)
-        ? enrollment.automation_steps
-        : enrollment.automation_steps ? [enrollment.automation_steps] : []
+      Array.isArray(seq?.automation_steps)
+        ? seq.automation_steps
+        : seq?.automation_steps ? [seq.automation_steps] : []
     ).sort((a: { step_order: number }, b: { step_order: number }) => a.step_order - b.step_order);
 
     // Pokud lead nemá email nebo byl konvertován / nemá leads → zastav
@@ -206,46 +209,69 @@ export async function GET(request: Request) {
   });
 
   let birthdaySent = 0;
+  const birthdayDebug: string[] = [];
 
   for (const contact of todayBirthdays) {
-    // Najdi narozeninovou sekvenci tohoto uživatele
+    // Pokud je kontakt člena týmu, použij owner_id pro sekvenci a email settings
+    const { data: memberRecord } = await supabase
+      .from('team_members')
+      .select('owner_id')
+      .eq('member_user_id', contact.user_id)
+      .eq('status', 'aktivni')
+      .maybeSingle();
+
+    const effectiveUserId = memberRecord?.owner_id ?? contact.user_id;
+
+    // Najdi narozeninovou sekvenci (vlastního nebo adminova účtu)
     const { data: seqData } = await supabase
       .from('automation_sequences')
       .select('id, automation_steps(id, step_order, delay_days, subject, body, attachment_path, attachment_name)')
-      .eq('user_id', contact.user_id)
+      .eq('user_id', effectiveUserId)
       .eq('je_narozeninova', true)
       .limit(1)
       .single();
 
-    if (!seqData) continue;
+    if (!seqData) {
+      birthdayDebug.push(`${contact.email} (${contact.datum_narozeni}): SKIP – žádná narozeninová sekvence pro user ${effectiveUserId}`);
+      continue;
+    }
 
     const steps = (Array.isArray(seqData.automation_steps) ? seqData.automation_steps : [seqData.automation_steps])
       .sort((a: { step_order: number }, b: { step_order: number }) => a.step_order - b.step_order);
-    if (!steps.length) continue;
+    if (!steps.length) {
+      birthdayDebug.push(`${contact.email} (${contact.datum_narozeni}): SKIP – sekvence nemá žádné kroky`);
+      continue;
+    }
 
     // Zkontroluj zda letos nebyl narozeninový email pro tohoto zákazníka odeslán
-    // Filtrujeme pouze na step_id narozeninové sekvence — ne na jiné emaily
     const thisYearStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1)).toISOString();
     const birthdayStepIds = steps.map((s: { id: string }) => s.id);
     const { data: existingLog } = await supabase
       .from('automation_step_logs')
       .select('id')
-      .eq('user_id', contact.user_id)
+      .eq('user_id', effectiveUserId)
       .eq('to_email', contact.email)
+      .eq('status', 'sent')
       .in('step_id', birthdayStepIds)
       .gte('sent_at', thisYearStart)
       .limit(1);
 
-    if (existingLog && existingLog.length > 0) continue; // Narozeninový email letos již odeslán
+    if (existingLog && existingLog.length > 0 && !forceBirthday) {
+      birthdayDebug.push(`${contact.email} (${contact.datum_narozeni}): SKIP – email letos již odeslán`);
+      continue;
+    }
 
-    // Načti SMTP nastavení
+    // Načti SMTP nastavení (vlastní nebo adminovo)
     const { data: emailSettings } = await supabase
       .from('email_settings')
       .select('*')
-      .eq('user_id', contact.user_id)
+      .eq('user_id', effectiveUserId)
       .single();
 
-    if (!emailSettings) continue;
+    if (!emailSettings) {
+      birthdayDebug.push(`${contact.email} (${contact.datum_narozeni}): SKIP – chybí SMTP nastavení pro user ${effectiveUserId}`);
+      continue;
+    }
 
     const step = steps[0];
     let bdSent = false;
@@ -259,7 +285,7 @@ export async function GET(request: Request) {
         auth: { user: emailSettings.smtp_user, pass: decryptPassword(emailSettings.smtp_password) },
       });
 
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: `"${emailSettings.display_name || emailSettings.smtp_user}" <${emailSettings.smtp_user}>`,
         to: contact.email,
         subject: step.subject,
@@ -270,16 +296,18 @@ export async function GET(request: Request) {
 
       bdSent = true;
       birthdaySent++;
+      birthdayDebug.push(`${contact.email}: ODESLÁNO přes ${emailSettings.smtp_user} @ ${emailSettings.smtp_host} | messageId: ${info.messageId} | response: ${info.response}`);
     } catch (err) {
       bdError = err instanceof Error ? err.message : 'Chyba';
       errors.push(`Narozeniny ${contact.email}: ${bdError}`);
+      birthdayDebug.push(`${contact.email}: SMTP CHYBA – ${bdError} (host: ${emailSettings.smtp_host}, user: ${emailSettings.smtp_user})`);
     }
 
     // Vytvoř enrollment + zapis log (bez navazujících kroků — jen pro evidenci)
     const { data: bdEnrollment } = await supabase
       .from('automation_enrollments')
       .insert({
-        user_id: contact.user_id,
+        user_id: effectiveUserId,
         sequence_id: seqData.id,
         lead_id: null,
         status: 'completed',
@@ -293,7 +321,7 @@ export async function GET(request: Request) {
       await supabase.from('automation_step_logs').insert({
         enrollment_id: bdEnrollment.id,
         step_id: step.id,
-        user_id: contact.user_id,
+        user_id: effectiveUserId,
         to_email: contact.email,
         subject: step.subject,
         status: bdSent ? 'sent' : 'error',
@@ -410,7 +438,7 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ processed, sent, completed, stopped, birthdaySent, reportsSent, errors });
+  return NextResponse.json({ processed, sent, completed, stopped, birthdaySent, reportsSent, errors, birthdayDebug, birthdayContactsFound: todayBirthdays.length, todayMMDD });
 }
 
 // buildMonthlyReportHtml přesunuto do lib/monthlyReportHtml.ts

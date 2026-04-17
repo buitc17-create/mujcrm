@@ -11,6 +11,15 @@ type CalEvent = {
   contacts?: { jmeno: string; prijmeni: string | null } | null;
   deals?: { nazev: string } | null;
 };
+
+type GCalEvent = {
+  id: string; title: string; date: string;
+  timeStart: string | null; timeEnd: string | null; allDay: boolean;
+  calendarName: string; calendarColor: string;
+  description: string | null; location: string | null;
+};
+
+type ExtCalEvent = GCalEvent & { source: 'google' | 'microsoft' };
 type Contact = { id: string; jmeno: string; prijmeni: string | null };
 type Deal = { id: string; nazev: string };
 type Holiday = { datum: string; nazev: string };
@@ -117,6 +126,9 @@ export default function CalendarPage() {
   const [view, setView] = useState<ViewMode>('mesic');
   const [curDate, setCurDate] = useState(new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate()));
   const [events, setEvents] = useState<CalEvent[]>([]);
+  const [gcalEvents, setGcalEvents] = useState<ExtCalEvent[]>([]);
+  const [gcalConnected, setGcalConnected] = useState(false);
+  const [msCalConnected, setMsCalConnected] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -167,10 +179,19 @@ export default function CalendarPage() {
     } else {
       start = `${year}-01-01`; end = `${year}-12-31`;
     }
-    const { data } = await supabase.from('calendar_events')
-      .select('id, nazev, typ, datum, cas_od, cas_do, popis, contact_id, deal_id, contacts(jmeno, prijmeni), deals(nazev)')
-      .gte('datum', start).lte('datum', end).order('datum').order('cas_od');
+    const [{ data }, gcalRes, msRes] = await Promise.all([
+      supabase.from('calendar_events')
+        .select('id, nazev, typ, datum, cas_od, cas_do, popis, contact_id, deal_id, contacts(jmeno, prijmeni), deals(nazev)')
+        .gte('datum', start).lte('datum', end).order('datum').order('cas_od'),
+      fetch(`/api/google-calendar/events?start=${start}&end=${end}`).then(r => r.json()).catch(() => ({ events: [], connected: false })),
+      fetch(`/api/microsoft-calendar/events?start=${start}&end=${end}`).then(r => r.json()).catch(() => ({ events: [], connected: false })),
+    ]);
     setEvents((data as unknown as CalEvent[]) ?? []);
+    const gEvents: ExtCalEvent[] = (gcalRes.events ?? []).map((e: GCalEvent) => ({ ...e, source: 'google' as const }));
+    const mEvents: ExtCalEvent[] = (msRes.events ?? []).map((e: GCalEvent) => ({ ...e, source: 'microsoft' as const }));
+    setGcalEvents([...gEvents, ...mEvents]);
+    setGcalConnected(gcalRes.connected ?? false);
+    setMsCalConnected(msRes.connected ?? false);
     setLoading(false);
   };
 
@@ -182,6 +203,15 @@ export default function CalendarPage() {
     }
     return map;
   }, [events]);
+
+  const gcalByDay = useMemo(() => {
+    const map: Record<string, ExtCalEvent[]> = {};
+    for (const e of gcalEvents) {
+      if (!map[e.date]) map[e.date] = [];
+      map[e.date].push(e);
+    }
+    return map;
+  }, [gcalEvents]);
 
   // Navigation
   const navigate = (dir: number) => {
@@ -323,6 +353,7 @@ export default function CalendarPage() {
             const isToday = ds === todayStr;
             const isHoliday = !!holidays[ds];
             const evCount = (eventsByDay[ds] ?? []).length;
+            const gcalCount = (gcalByDay[ds] ?? []).length;
             const isWeekend = (i % 7) >= 5;
             return (
               <button
@@ -341,14 +372,17 @@ export default function CalendarPage() {
                 title={isHoliday ? holidays[ds] : undefined}
               >
                 {day}
-                {evCount > 0 && !small && (
+                {(evCount > 0 || gcalCount > 0) && !small && (
                   <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
-                    {(eventsByDay[ds] ?? []).slice(0, 3).map((ev, ei) => (
+                    {(eventsByDay[ds] ?? []).slice(0, 2).map((ev, ei) => (
                       <div key={ei} className="w-1 h-1 rounded-full" style={{ background: typeMeta(ev.typ).color }} />
+                    ))}
+                    {(gcalByDay[ds] ?? []).slice(0, 2).map((_, ei) => (
+                      <div key={`g${ei}`} className="w-1 h-1 rounded-full" style={{ background: '#4285F4' }} />
                     ))}
                   </div>
                 )}
-                {evCount > 0 && small && <div className="w-1 h-1 rounded-full mt-0.5" style={{ background: '#00BFFF' }} />}
+                {(evCount > 0 || gcalCount > 0) && small && <div className="w-1 h-1 rounded-full mt-0.5" style={{ background: '#00BFFF' }} />}
               </button>
             );
           })}
@@ -361,6 +395,7 @@ export default function CalendarPage() {
   const DayView = () => {
     const ds = toYMD(curDate);
     const dayEvents = eventsByDay[ds] ?? [];
+    const dayGcal = gcalByDay[ds] ?? [];
     const holiday = holidays[ds];
     const hours = Array.from({ length: 24 }, (_, i) => i);
     return (
@@ -370,10 +405,21 @@ export default function CalendarPage() {
             🇨🇿 Státní svátek: {holiday}
           </div>
         )}
+        {dayGcal.filter(e => e.allDay).length > 0 && (
+          <div className="mb-2 flex flex-col gap-1">
+            {dayGcal.filter(e => e.allDay).map(ev => (
+              <div key={ev.id} className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: ev.calendarColor + '22', color: ev.calendarColor, border: `1px solid ${ev.calendarColor}40` }}>
+                🗓 {ev.title} <span className="opacity-50 font-normal">· {ev.calendarName}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex flex-col">
           {hours.map(h => {
             const timeStr = `${String(h).padStart(2, '0')}:00`;
             const hEvents = dayEvents.filter(e => e.cas_od?.startsWith(String(h).padStart(2, '0')));
+            const hGcal = dayGcal.filter(e => !e.allDay && e.timeStart?.startsWith(String(h).padStart(2, '0')));
             return (
               <div key={h} className="flex gap-3 group"
                 style={{ borderTop: '1px solid rgba(255,255,255,0.04)', minHeight: '52px' }}>
@@ -391,7 +437,16 @@ export default function CalendarPage() {
                       </button>
                     );
                   })}
-                  {hEvents.length === 0 && (
+                  {hGcal.map(ev => (
+                    <div key={ev.id} className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                      style={{ background: ev.calendarColor + '20', color: ev.calendarColor, border: `1px solid ${ev.calendarColor}35` }}
+                      title={ev.description ?? ev.calendarName}>
+                      <span style={{ fontSize: '10px', opacity: 0.7 }}>{ev.source === 'microsoft' ? 'MS' : 'G'}</span>
+                      {ev.timeStart} {ev.title}
+                      <span className="ml-1 opacity-50 font-normal">· {ev.calendarName}</span>
+                    </div>
+                  ))}
+                  {hEvents.length === 0 && hGcal.length === 0 && (
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                       <span className="text-xs" style={{ color: 'rgba(0,191,255,0.4)' }}>+ Přidat událost</span>
                     </div>
@@ -529,6 +584,8 @@ export default function CalendarPage() {
             const isToday = ds === todayStr;
             const holiday = holidays[ds];
             const dayEvents = eventsByDay[ds] ?? [];
+            const dayGcal = gcalByDay[ds] ?? [];
+            const totalExtra = Math.max(0, dayEvents.length + dayGcal.length - 3);
             const isWeekend = (i % 7) >= 5;
             return (
               <div key={i} onClick={() => openAdd(ds)}
@@ -551,7 +608,7 @@ export default function CalendarPage() {
                   {holiday && <span className="text-xs truncate max-w-[60%] hidden sm:block" style={{ color: 'rgba(248,113,113,0.7)', fontSize: '9px' }}>{holiday}</span>}
                 </div>
                 <div className="flex flex-col gap-0.5 overflow-hidden">
-                  {dayEvents.slice(0, 3).map(ev => {
+                  {dayEvents.slice(0, 2).map(ev => {
                     const meta = typeMeta(ev.typ);
                     return (
                       <button key={ev.id} onClick={e => { e.stopPropagation(); openEdit(ev); }}
@@ -561,7 +618,14 @@ export default function CalendarPage() {
                       </button>
                     );
                   })}
-                  {dayEvents.length > 3 && <p className="text-xs px-1" style={{ color: 'rgba(237,237,237,0.35)' }}>+{dayEvents.length - 3}</p>}
+                  {dayGcal.slice(0, Math.max(0, 3 - dayEvents.slice(0, 2).length)).map(ev => (
+                    <div key={ev.id} className="px-1.5 py-0.5 rounded text-xs font-medium truncate flex items-center gap-1"
+                      style={{ background: ev.calendarColor + '20', color: ev.calendarColor }}>
+                      <span style={{ fontSize: '9px', opacity: 0.7, flexShrink: 0 }}>G</span>
+                      {ev.timeStart ? ev.timeStart + ' ' : ''}{ev.title}
+                    </div>
+                  ))}
+                  {totalExtra > 0 && <p className="text-xs px-1" style={{ color: 'rgba(237,237,237,0.35)' }}>+{totalExtra}</p>}
                 </div>
               </div>
             );
@@ -643,6 +707,24 @@ export default function CalendarPage() {
             <div className="w-2 h-2 rounded-full" style={{ background: '#f87171' }} />
             <span className="text-xs" style={{ color: 'rgba(237,237,237,0.4)' }}>Státní svátek</span>
           </div>
+          {gcalConnected && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full" style={{ background: '#4285F4' }} />
+              <span className="text-xs" style={{ color: 'rgba(237,237,237,0.4)' }}>Google Kalendář</span>
+            </div>
+          )}
+          {msCalConnected && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full" style={{ background: '#0078D4' }} />
+              <span className="text-xs" style={{ color: 'rgba(237,237,237,0.4)' }}>Microsoft Kalendář</span>
+            </div>
+          )}
+          {!gcalConnected && !msCalConnected && (
+            <a href="/dashboard/settings" className="flex items-center gap-1.5 ml-auto"
+              style={{ color: 'rgba(66,133,244,0.6)', fontSize: '11px' }}>
+              + Propojit kalendář
+            </a>
+          )}
         </div>
       )}
 

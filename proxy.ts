@@ -29,7 +29,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const publicRoutes = ['/', '/auth/login', '/auth/register', '/auth/callback', '/onboarding', '/gdpr', '/podminky', '/zasady-soukromi', '/znalostni-baze'];
-  const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith('/auth/') || pathname.startsWith('/onboarding') || pathname.startsWith('/blog') || pathname.startsWith('/funkce'));
+  const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith('/auth/') || pathname.startsWith('/onboarding') || pathname.startsWith('/blog') || pathname.startsWith('/funkce')) || pathname.startsWith('/api/');
 
   // Unauthenticated user tries to access protected route
   if (!user && !isPublic) {

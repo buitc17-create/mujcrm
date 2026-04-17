@@ -7,6 +7,18 @@
     {
       "path": "/api/automations/cron",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/onboarding/cron",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/reactivation/cron",
+      "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/deadlines/cron",
+      "schedule": "0 6 * * *"
     }
   ]
 }

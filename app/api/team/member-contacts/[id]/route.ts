@@ -24,28 +24,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const ownerId = memberRecord.owner_id
 
-  // Verify the contact is linked to at least one of the member's assigned deals or tasks
-  const [{ data: deals }, { data: tasks }] = await Promise.all([
-    admin.from('deals').select('id').eq('user_id', ownerId).eq('assigned_to', user.id).eq('contact_id', id).limit(1),
-    admin.from('tasks').select('id').eq('user_id', ownerId).eq('assigned_to', user.id).eq('contact_id', id).limit(1),
-  ])
+  // Verify the contact belongs to the member
+  const { data: contact } = await admin
+    .from('contacts').select('*').eq('id', id).eq('user_id', user.id).single()
 
-  if (!deals?.length && !tasks?.length) {
-    return NextResponse.json({ error: 'Přístup odepřen' }, { status: 403 })
-  }
+  if (!contact) return NextResponse.json({ error: 'Přístup odepřen' }, { status: 403 })
 
-  const [{ data: contact }, { data: assignedDeals }, { data: assignedTasks }] = await Promise.all([
-    admin.from('contacts').select('*').eq('id', id).single(),
+  const [{ data: assignedDeals }, { data: assignedTasks }] = await Promise.all([
     admin.from('deals')
       .select('id, nazev, hodnota, status, datum_uzavreni')
       .eq('user_id', ownerId)
-      .eq('assigned_to', user.id)
       .eq('contact_id', id)
       .order('created_at', { ascending: false }),
     admin.from('tasks')
       .select('id, nazev, deadline, dokonceno')
       .eq('user_id', ownerId)
-      .eq('assigned_to', user.id)
       .eq('contact_id', id)
       .order('created_at', { ascending: false }),
   ])

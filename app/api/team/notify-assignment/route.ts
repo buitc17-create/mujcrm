@@ -5,12 +5,13 @@ import nodemailer from 'nodemailer'
 import { decryptPassword } from '@/lib/emailCrypto'
 
 function assignmentEmailHtml({
-  memberName, ownerName, itemName, typeLabel, typePath, appUrl, mode, itemType,
+  memberName, ownerName, itemName, typeLabel, typePath, appUrl, mode, itemType, itemValue,
 }: {
   memberName: string | null; ownerName: string; itemName: string;
   typeLabel: string; typePath: string; appUrl: string;
   mode: 'assigned' | 'accepted' | 'declined';
   itemType?: 'task' | 'deal';
+  itemValue?: number | null;
 }) {
   const isDeal = itemType === 'deal';
   // Czech grammar: zakázka is feminine, úkol is masculine
@@ -42,20 +43,35 @@ function assignmentEmailHtml({
   const badgeBg = mode === 'accepted' ? '#d1fae5' : mode === 'declined' ? '#fee2e2' : '#e0f7ff';
   const badgeText = mode === 'accepted' ? '✓ Přijato' : mode === 'declined' ? '✗ Odmítnuto' : '● Přiřazeno';
 
+  const valueRow = (itemType === 'deal' && itemValue != null)
+    ? `<div style="margin-top:8px;font-size:13px;color:#6b7280">Hodnota zakázky: <strong style="color:#111827">${itemValue.toLocaleString('cs-CZ')} Kč</strong></div>`
+    : '';
+
   return `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb">
   <div style="background:linear-gradient(135deg,#0a0a0a 0%,#111827 100%);padding:32px 40px;text-align:center">
-    <div style="display:inline-flex;align-items:center;gap:10px">
-      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#00BFFF,#7B2FFF);display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#ffffff">M</div>
-      <span style="font-size:20px;font-weight:700;color:#ffffff">Muj<span style="color:#00BFFF">CRM</span></span>
-    </div>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto">
+      <tr>
+        <td style="vertical-align:middle;padding-right:10px">
+          <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#00BFFF,#7B2FFF);text-align:center;line-height:36px;font-weight:900;font-size:18px;color:#ffffff">M</div>
+        </td>
+        <td style="vertical-align:middle">
+          <span style="font-size:20px;font-weight:700;color:#ffffff">Muj<span style="color:#00BFFF">CRM</span></span>
+        </td>
+      </tr>
+    </table>
   </div>
   <div style="padding:40px">
     <h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#111827">${heading}</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;line-height:1.6">${bodyText}</p>
-    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:16px 20px;margin:0 0 24px;display:flex;align-items:center;justify-content:space-between;gap:12px">
-      <span style="font-size:16px;font-weight:700;color:#111827">${itemName}</span>
-      <span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;color:${badgeColor};background:${badgeBg};white-space:nowrap">${badgeText}</span>
+    <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:16px 20px;margin:0 0 24px">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td><span style="font-size:16px;font-weight:700;color:#111827">${itemName}</span></td>
+          <td style="text-align:right"><span style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;color:${badgeColor};background:${badgeBg};white-space:nowrap">${badgeText}</span></td>
+        </tr>
+      </table>
+      ${valueRow}
     </div>
     <a href="${appUrl}/dashboard/${typePath}" style="display:inline-block;${btnColor};color:#ffffff;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;text-decoration:none">
       ${btnText}
@@ -72,7 +88,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Nepřihlášen' }, { status: 401 })
 
-  const { type, id, assignedToId, itemName } = await request.json()
+  const { type, id, assignedToId, itemName, itemValue } = await request.json()
 
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -138,6 +154,7 @@ export async function POST(request: Request) {
     appUrl,
     mode: 'assigned',
     itemType: type,
+    itemValue: type === 'deal' ? (itemValue ?? null) : null,
   })
 
   let smtpError = null

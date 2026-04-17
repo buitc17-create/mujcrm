@@ -12,6 +12,7 @@ type Contact = {
   datum_narozeni: string | null;
 };
 type Deal = { id: string; nazev: string; hodnota: number; status: string; datum_uzavreni: string | null };
+type PipelineStage = { id: string; nazev: string; barva: string; poradi: number };
 type Task = { id: string; nazev: string; deadline: string | null; dokonceno: boolean };
 
 const tagColors: Record<string, string> = {
@@ -45,6 +46,12 @@ export default function ContactDetailPage() {
   const [editForm, setEditForm] = useState<Partial<Contact>>({});
   const [showEmail, setShowEmail] = useState(false);
   const [isMember, setIsMember] = useState(false);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [showDealModal, setShowDealModal] = useState(false);
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
+  const [dealForm, setDealForm] = useState({ nazev: '', hodnota: '', stage_id: '' });
+  const [dealSaving, setDealSaving] = useState(false);
+  const [dealStageError, setDealStageError] = useState(false);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -52,23 +59,36 @@ export default function ContactDetailPage() {
       if (!user) { setLoading(false); return; }
 
       const membersData = await fetch('/api/team/members').then(r => r.json());
-      const member = membersData.ownerId && membersData.ownerId !== user.id;
+      const resolvedOwnerId: string | null = membersData.ownerId ?? null;
+      const member = resolvedOwnerId !== null && resolvedOwnerId !== user.id;
       setIsMember(member);
+      setOwnerId(resolvedOwnerId);
 
       if (member) {
-        const res = await fetch(`/api/team/member-contacts/${id}`).then(r => r.json());
+        const [res, ws] = await Promise.all([
+          fetch(`/api/team/member-contacts/${id}`).then(r => r.json()),
+          fetch('/api/team/workspace').then(r => r.json()),
+        ]);
         if (res.contact) { setContact(res.contact); setEditForm(res.contact); }
         setDeals(res.deals ?? []);
         setTasks(res.tasks ?? []);
+        if (ws.stages?.length) setPipelineStages(ws.stages as PipelineStage[]);
+        setDealForm(p => ({ ...p, nazev: res.contact ? `${res.contact.firma || res.contact.jmeno}` : '' }));
       } else {
-        const [cRes, dRes, tRes] = await Promise.all([
+        const [cRes, dRes, tRes, stagesRes] = await Promise.all([
           supabase.from('contacts').select('*').eq('id', id).single(),
           supabase.from('deals').select('id, nazev, hodnota, status, datum_uzavreni').eq('contact_id', id).order('created_at', { ascending: false }),
           supabase.from('tasks').select('id, nazev, deadline, dokonceno').eq('contact_id', id).order('created_at', { ascending: false }),
+          supabase.from('pipeline_stages').select('id, nazev, barva, poradi').order('poradi'),
         ]);
-        if (cRes.data) { setContact(cRes.data); setEditForm(cRes.data); }
+        if (cRes.data) {
+          setContact(cRes.data);
+          setEditForm(cRes.data);
+          setDealForm(p => ({ ...p, nazev: cRes.data.firma || cRes.data.jmeno }));
+        }
         setDeals(dRes.data ?? []);
         setTasks(tRes.data ?? []);
+        setPipelineStages((stagesRes.data as PipelineStage[]) ?? []);
       }
       setLoading(false);
     };
@@ -98,6 +118,43 @@ export default function ContactDetailPage() {
     if (!confirm(`Smazat zákazníka "${name}"? Tato akce je nevratná.`)) return;
     await supabase.from('contacts').delete().eq('id', id);
     router.push('/dashboard/contacts');
+  };
+
+  const handleCreateDeal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dealForm.stage_id) { setDealStageError(true); return; }
+    setDealStageError(false);
+    setDealSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setDealSaving(false); return; }
+
+    if (isMember) {
+      await fetch('/api/team/member-deals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nazev: dealForm.nazev.trim() || contact?.firma || contact?.jmeno || 'Zakázka',
+          hodnota: dealForm.hodnota,
+          contact_id: id,
+          stage_id: dealForm.stage_id,
+          zdroj: 'jine',
+        }),
+      });
+    } else {
+      const { data: newDeal } = await supabase.from('deals').insert({
+        user_id: user.id,
+        nazev: dealForm.nazev.trim() || contact?.firma || contact?.jmeno || 'Zakázka',
+        hodnota: parseFloat(dealForm.hodnota) || 0,
+        contact_id: id,
+        stage_id: dealForm.stage_id,
+        status: 'novy', priorita: 'stredni', pravdepodobnost: 50, zdroj: 'jine',
+      }).select('id, nazev, hodnota, status, datum_uzavreni').single();
+      if (newDeal) setDeals(prev => [newDeal as Deal, ...prev]);
+    }
+
+    setShowDealModal(false);
+    setDealSaving(false);
+    setDealForm(p => ({ ...p, hodnota: '', stage_id: '' }));
   };
 
   if (loading) return (
@@ -213,8 +270,7 @@ export default function ContactDetailPage() {
                   Napsat email
                 </button>
               )}
-              {!isMember && (
-                <>
+              <>
                   <button onClick={() => setEditing(true)}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
                     style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.7)' }}
@@ -232,7 +288,6 @@ export default function ContactDetailPage() {
                     Smazat
                   </button>
                 </>
-              )}
             </div>
           </div>
         )}
@@ -251,7 +306,7 @@ export default function ContactDetailPage() {
         <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             <p className="text-sm font-bold text-white">Zakázky ({deals.length})</p>
-            <Link href="/dashboard/deals" className="text-xs" style={{ color: '#00BFFF' }}>Přidat →</Link>
+            <button onClick={() => { setDealStageError(false); setShowDealModal(true); }} className="text-xs font-semibold" style={{ color: '#00BFFF', background: 'none', border: 'none', cursor: 'pointer' }}>+ Přidat do pipeline</button>
           </div>
           {deals.length === 0 ? (
             <p className="px-5 py-8 text-sm text-center" style={{ color: 'rgba(237,237,237,0.35)' }}>Žádné zakázky</p>
@@ -312,6 +367,62 @@ export default function ContactDetailPage() {
           contactId={contact.id}
           onClose={() => setShowEmail(false)}
         />
+      )}
+
+      {showDealModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setShowDealModal(false)} />
+          <div className="relative w-full max-w-sm rounded-2xl p-6" style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-white">Přidat do pipeline</h2>
+              <button onClick={() => setShowDealModal(false)} style={{ color: 'rgba(237,237,237,0.4)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <form onSubmit={handleCreateDeal} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'rgba(237,237,237,0.5)' }}>Název zakázky</label>
+                <input type="text" value={dealForm.nazev}
+                  onChange={e => setDealForm(p => ({ ...p, nazev: e.target.value }))}
+                  style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.4)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'rgba(237,237,237,0.5)' }}>Hodnota (Kč)</label>
+                <input type="number" placeholder="0" value={dealForm.hodnota}
+                  onChange={e => setDealForm(p => ({ ...p, hodnota: e.target.value }))}
+                  style={inputStyle}
+                  onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.4)')}
+                  onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: dealStageError ? '#f87171' : 'rgba(237,237,237,0.5)' }}>Fáze pipeline *</label>
+                <select value={dealForm.stage_id}
+                  onChange={e => { setDealForm(p => ({ ...p, stage_id: e.target.value })); setDealStageError(false); }}
+                  style={{ ...inputStyle, borderColor: dealStageError ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+                  <option value="" style={{ background: '#1a1a1a' }}>– Vyberte fázi –</option>
+                  {pipelineStages.map(s => (
+                    <option key={s.id} value={s.id} style={{ background: '#1a1a1a' }}>{s.nazev}</option>
+                  ))}
+                </select>
+                {dealStageError && <p className="text-xs mt-1" style={{ color: '#f87171' }}>Vyberte fázi pipeline</p>}
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button type="submit" disabled={dealSaving}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a' }}>
+                  {dealSaving ? 'Ukládám…' : 'Přidat do pipeline →'}
+                </button>
+                <button type="button" onClick={() => setShowDealModal(false)}
+                  className="px-4 py-3 rounded-xl text-sm font-semibold"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.7)' }}>
+                  Zrušit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

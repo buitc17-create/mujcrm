@@ -6,7 +6,6 @@ import nodemailer from 'nodemailer'
 import Stripe from 'stripe'
 import { PLANS } from '@/lib/stripe-config'
 import { buildTrialEndEmailHtml } from '@/lib/trialEndEmailHtml'
-import { decryptPassword } from '@/lib/emailCrypto'
 
 function planFromPriceId(priceId: string): string {
   for (const [key, plan] of Object.entries(PLANS)) {
@@ -102,25 +101,22 @@ export async function POST(req: Request) {
       const userEmail = authUser.user?.email
       if (!userEmail) break
 
-      // Načti SMTP nastavení uživatele
-      const { data: emailSettings } = await adminClient
-        .from('email_settings')
-        .select('*')
-        .eq('user_id', profile.id)
-        .single()
-
-      if (!emailSettings) break
+      // Použij systémový SMTP (info@mujcrm.cz)
+      const systemSmtpUser = process.env.SYSTEM_SMTP_USER
+      const systemSmtpPass = process.env.SYSTEM_SMTP_PASS
+      const systemSmtpFrom = process.env.SYSTEM_SMTP_FROM ?? systemSmtpUser
+      if (!systemSmtpUser || !systemSmtpPass) break
 
       try {
         const transporter = nodemailer.createTransport({
-          host: emailSettings.smtp_host,
-          port: emailSettings.smtp_port,
-          secure: emailSettings.smtp_secure,
-          auth: { user: emailSettings.smtp_user, pass: decryptPassword(emailSettings.smtp_password) },
+          host: process.env.SYSTEM_SMTP_HOST ?? 'smtp.gmail.com',
+          port: Number(process.env.SYSTEM_SMTP_PORT ?? 465),
+          secure: process.env.SYSTEM_SMTP_SECURE !== 'false',
+          auth: { user: systemSmtpUser, pass: systemSmtpPass },
         })
 
         await transporter.sendMail({
-          from: `"MujCRM" <${emailSettings.smtp_user}>`,
+          from: `"MujCRM" <${systemSmtpFrom}>`,
           to: userEmail,
           subject: 'Váš bezplatný měsíc právě skončil — co dál?',
           html: buildTrialEndEmailHtml(),

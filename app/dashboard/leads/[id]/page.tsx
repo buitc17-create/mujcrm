@@ -23,6 +23,10 @@ type LeadStatus = {
   id: string; nazev: string; barva: string; poradi: number;
 };
 
+type PipelineStage = {
+  id: string; nazev: string; barva: string; poradi: number;
+};
+
 type FollowUp = {
   id: string; typ: string; poznamka: string | null; datum: string; created_at: string;
 };
@@ -117,8 +121,10 @@ export default function LeadDetailPage() {
 
   // Convert modal
   const [showConvert, setShowConvert] = useState(false);
-  const [convForm, setConvForm] = useState({ createDeal: true, nazevObchodu: '', hodnota: '' });
+  const [convForm, setConvForm] = useState({ createDeal: true, nazevObchodu: '', hodnota: '', stage_id: '' });
   const [converting, setConverting] = useState(false);
+  const [convStageError, setConvStageError] = useState(false);
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
 
   // Toast
   const [toast, setToast] = useState<{ message: string; color: string } | null>(null);
@@ -142,10 +148,11 @@ export default function LeadDetailPage() {
       statusData = created ?? [];
     }
 
-    const [{ data: leadData }, { data: fuData }, { data: enrollData }] = await Promise.all([
+    const [{ data: leadData }, { data: fuData }, { data: enrollData }, { data: stagesData }] = await Promise.all([
       supabase.from('leads').select('*').eq('id', id).single(),
       supabase.from('lead_followups').select('*').eq('lead_id', id).order('datum', { ascending: false }),
       supabase.from('automation_enrollments').select('id, current_step, status, automation_sequences(name)').eq('lead_id', id).eq('status', 'active').limit(1),
+      supabase.from('pipeline_stages').select('id, nazev, barva, poradi').order('poradi'),
     ]);
 
     if (!leadData) { router.push('/dashboard/leads'); return; }
@@ -154,7 +161,10 @@ export default function LeadDetailPage() {
     setFollowups(fuData ?? []);
     setEnrollment((enrollData?.[0] as unknown as Enrollment) ?? null);
     setCenaVal((leadData as Lead).cena != null ? String((leadData as Lead).cena) : '');
-    setConvForm(p => ({ ...p, nazevObchodu: (leadData as Lead).firma || `${(leadData as Lead).jmeno} ${(leadData as Lead).prijmeni ?? ''}`.trim() }));
+    setPipelineStages((stagesData as PipelineStage[]) ?? []);
+    const leadName = (leadData as Lead).firma || `${(leadData as Lead).jmeno} ${(leadData as Lead).prijmeni ?? ''}`.trim();
+    setConvForm(p => ({ ...p, nazevObchodu: leadName }));
+    setConvForm(p => ({ ...p, hodnota: (leadData as Lead).cena != null ? String((leadData as Lead).cena) : '' }));
     setLoading(false);
   }, [id]);
 
@@ -166,6 +176,14 @@ export default function LeadDetailPage() {
         setSequences(d.sequences ?? []);
         if (d.sequences?.length > 0) setSelectedSeqId(d.sequences[0].id);
       });
+    // Pipeline stages: for members load via workspace (admin client bypasses RLS)
+    // For admins, stages are loaded in loadData via supabase client
+    fetch('/api/team/workspace')
+      .then(r => r.json())
+      .then(ws => {
+        if (ws.stages?.length) setPipelineStages(ws.stages as PipelineStage[]);
+      })
+      .catch(() => {}); // Ignore errors for non-members (admin loads stages in loadData)
   }, [loadData]);
 
   const statusInfo = useCallback((id: string | null) => {
@@ -291,38 +309,40 @@ export default function LeadDetailPage() {
   const handleConvert = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lead) return;
+    if (convForm.createDeal && !convForm.stage_id) { setConvStageError(true); return; }
+    setConvStageError(false);
     setConverting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setConverting(false); return; }
 
-    const { data: contactData } = await supabase.from('contacts').insert({
-      user_id: user.id,
-      jmeno: lead.jmeno, prijmeni: lead.prijmeni,
-      email: lead.email, telefon: lead.telefon, firma: lead.firma,
-      tag: 'zákazník',
-    }).select().single();
+    const res = await fetch('/api/leads/convert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lead_id: id,
+        jmeno: lead.jmeno,
+        prijmeni: lead.prijmeni,
+        email: lead.email,
+        telefon: lead.telefon,
+        firma: lead.firma,
+        zdroj: lead.zdroj,
+        create_deal: convForm.createDeal && !!convForm.nazevObchodu.trim(),
+        deal_name: convForm.nazevObchodu.trim(),
+        deal_value: convForm.hodnota,
+        stage_id: convForm.stage_id || null,
+      }),
+    });
 
-    if (!contactData) { setConverting(false); return; }
-
-    if (convForm.createDeal && convForm.nazevObchodu.trim()) {
-      const { data: firstStage } = await supabase
-        .from('pipeline_stages').select('id').order('poradi').limit(1).single();
-      await supabase.from('deals').insert({
-        user_id: user.id,
-        nazev: convForm.nazevObchodu.trim(),
-        hodnota: parseFloat(convForm.hodnota) || 0,
-        contact_id: contactData.id,
-        stage_id: firstStage?.id ?? null,
-        status: 'novy', priorita: 'stredni', pravdepodobnost: 50, zdroj: lead.zdroj,
-      });
+    const json = await res.json();
+    if (!res.ok) {
+      showToast(json.error ?? 'Chyba při konverzi', '#ef4444');
+      setConverting(false);
+      return;
     }
 
-    await supabase.from('leads').update({ konvertovan: true, contact_id: contactData.id }).eq('id', id);
-
+    setLead(p => p ? { ...p, konvertovan: true, contact_id: json.contact_id } : null);
     showToast('Lead byl úspěšně převeden na zákazníka', '#22C55E');
     setShowConvert(false);
     setConverting(false);
-    setTimeout(() => router.push(`/dashboard/contacts/${contactData.id}`), 800);
+    setTimeout(() => router.push(`/dashboard/contacts/${json.contact_id}`), 800);
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -828,6 +848,20 @@ export default function LeadDetailPage() {
                       style={inputStyle}
                       onFocus={e => (e.currentTarget.style.borderColor = 'rgba(34,197,94,0.4)')}
                       onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: convStageError ? '#f87171' : 'rgba(237,237,237,0.5)' }}>
+                      Fáze pipeline *
+                    </label>
+                    <select value={convForm.stage_id}
+                      onChange={e => { setConvForm(p => ({ ...p, stage_id: e.target.value })); setConvStageError(false); }}
+                      style={{ ...inputStyle, borderColor: convStageError ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+                      <option value="" style={{ background: '#1a1a1a' }}>– Vyberte fázi –</option>
+                      {pipelineStages.map(s => (
+                        <option key={s.id} value={s.id} style={{ background: '#1a1a1a' }}>{s.nazev}</option>
+                      ))}
+                    </select>
+                    {convStageError && <p className="text-xs mt-1" style={{ color: '#f87171' }}>Vyberte fázi pipeline před uložením</p>}
                   </div>
                 </>
               )}

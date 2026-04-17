@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { openCookieSettings } from '@/app/components/CookieConsent';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -77,6 +77,157 @@ const DEFAULT_COMPANY: CompanySettings = {
   language: 'cs',
   gdpr_data_retention_months: 24,
 };
+
+function MicrosoftCalendarCard({ showToast }: { showToast: (msg: string, color: string) => void }) {
+  const searchParams = useSearchParams();
+  const [connected, setConnected] = useState(false);
+  const [msEmail, setMsEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/microsoft-calendar/status')
+      .then(r => r.json())
+      .then(d => { setConnected(d.connected); setMsEmail(d.email ?? null); setLoading(false); });
+  }, []);
+
+  useEffect(() => {
+    const mscal = searchParams.get('mscal');
+    if (mscal === 'connected') showToast('Microsoft Kalendář úspěšně propojen!', '#10b981');
+    if (mscal === 'error') showToast('Propojení Microsoft Kalendáře selhalo.', '#ef4444');
+  }, [searchParams]);
+
+  const disconnect = async () => {
+    setDisconnecting(true);
+    await fetch('/api/microsoft-calendar/disconnect', { method: 'DELETE' });
+    setConnected(false);
+    setMsEmail(null);
+    setDisconnecting(false);
+    showToast('Microsoft Kalendář odpojen.', '#f59e0b');
+  };
+
+  return (
+    <div style={cardStyle}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+            style={{ background: 'rgba(0,120,212,0.15)', color: '#0078D4' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M11.5 2H2v9.5h9.5V2zm0 10.5H2V22h9.5v-9.5zM22 2h-9.5v9.5H22V2zm0 10.5h-9.5V22H22v-9.5z"/>
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white mb-0.5">Microsoft Kalendář</h2>
+            <p className="text-sm" style={{ color: 'rgba(237,237,237,0.45)' }}>
+              {loading ? 'Načítám…' : connected
+                ? <>Propojeno{msEmail ? `: ${msEmail}` : ''} · Události se zobrazí v kalendáři MujCRM.</>
+                : 'Propoj Outlook / Microsoft 365 kalendář a zobrazuj události v MujCRM.'}
+            </p>
+          </div>
+        </div>
+        <div className="flex-shrink-0">
+          {!loading && !connected && (
+            <a href="/api/microsoft-calendar/connect"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+              style={{ background: 'rgba(0,120,212,0.12)', border: '1px solid rgba(0,120,212,0.3)', color: '#0078D4' }}>
+              Propojit →
+            </a>
+          )}
+          {!loading && connected && (
+            <button onClick={disconnect} disabled={disconnecting}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+              {disconnecting ? 'Odpojuji…' : 'Odpojit'}
+            </button>
+          )}
+        </div>
+      </div>
+      {!loading && connected && (
+        <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: '#10b981' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Aktivní synchronizace
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GoogleCalendarCard({ showToast }: { showToast: (msg: string, color: string) => void }) {
+  const searchParams = useSearchParams();
+  const [connected, setConnected] = useState(false);
+  const [gcalEmail, setGcalEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/google-calendar/status')
+      .then(r => r.json())
+      .then(d => { setConnected(d.connected); setGcalEmail(d.email ?? null); setLoading(false); });
+  }, []);
+
+  useEffect(() => {
+    const gcal = searchParams.get('gcal');
+    if (gcal === 'connected') showToast('Google Kalendář úspěšně propojen!', '#10b981');
+    if (gcal === 'error') showToast('Propojení Google Kalendáře selhalo.', '#ef4444');
+  }, [searchParams]);
+
+  const disconnect = async () => {
+    setDisconnecting(true);
+    await fetch('/api/google-calendar/disconnect', { method: 'DELETE' });
+    setConnected(false);
+    setGcalEmail(null);
+    setDisconnecting(false);
+    showToast('Google Kalendář odpojen.', '#f59e0b');
+  };
+
+  return (
+    <div style={cardStyle}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+            style={{ background: 'rgba(66,133,244,0.15)', color: '#4285F4' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" strokeWidth="1.8"/>
+              <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth="1.8"/>
+              <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white mb-0.5">Google Kalendář</h2>
+            <p className="text-sm" style={{ color: 'rgba(237,237,237,0.45)' }}>
+              {loading ? 'Načítám…' : connected
+                ? <>Propojeno{gcalEmail ? `: ${gcalEmail}` : ''} · Události se zobrazí v kalendáři MujCRM.</>
+                : 'Propoj svůj Google Kalendář a zobrazuj události přímo v MujCRM.'}
+            </p>
+          </div>
+        </div>
+        <div className="flex-shrink-0">
+          {!loading && !connected && (
+            <a href="/api/google-calendar/connect"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+              style={{ background: 'rgba(66,133,244,0.12)', border: '1px solid rgba(66,133,244,0.3)', color: '#4285F4' }}>
+              Propojit →
+            </a>
+          )}
+          {!loading && connected && (
+            <button onClick={disconnect} disabled={disconnecting}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+              {disconnecting ? 'Odpojuji…' : 'Odpojit'}
+            </button>
+          )}
+        </div>
+      </div>
+      {!loading && connected && (
+        <div className="mt-3 flex items-center gap-2 text-xs" style={{ color: '#10b981' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Aktivní synchronizace
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -625,6 +776,16 @@ export default function SettingsPage() {
           </a>
         </div>
       </div>
+
+      {/* ══════════════════════════════════════
+          GOOGLE KALENDÁŘ
+      ══════════════════════════════════════ */}
+      <GoogleCalendarCard showToast={showToast} />
+
+      {/* ══════════════════════════════════════
+          MICROSOFT KALENDÁŘ
+      ══════════════════════════════════════ */}
+      <MicrosoftCalendarCard showToast={showToast} />
 
       {/* ══════════════════════════════════════
           MODAL — Smazat účet

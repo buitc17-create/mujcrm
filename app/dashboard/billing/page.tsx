@@ -41,10 +41,12 @@ const plans = [
     desc: 'Pro firmy které rostou rychle a potřebují více.',
     highlight: false,
     badge: null,
+    trial: true,
     features: ['Vše z plánů Start a Tým', 'Pokročilý reporting s KPI', 'Export dat do CSV', 'Prioritní podpora', 'Až 10 členů týmu'],
   },
   {
     key: 'ENTERPRISE' as const,
+    trial: false,
     name: PLANS.ENTERPRISE.name,
     monthlyPrice: PLANS.ENTERPRISE.monthly.amount,
     yearlyPrice: Math.round(PLANS.ENTERPRISE.yearly.amount / 12),
@@ -71,6 +73,7 @@ export default function BillingPage() {
   const [pendingPlanDate, setPendingPlanDate] = useState<string | null>(null);
   const [changing, setChanging] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [trialEnd, setTrialEnd] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/stripe/subscription-info').then(r => r.json()).then(d => {
@@ -79,6 +82,7 @@ export default function BillingPage() {
       setHasSubscription(d.hasSubscription ?? false);
       setPendingPlan(d.pendingPlan ? d.pendingPlan.toUpperCase() : null);
       setPendingPlanDate(d.pendingPlanDate ?? null);
+      setTrialEnd(d.trialEnd ?? null);
     });
   }, []);
 
@@ -118,6 +122,18 @@ export default function BillingPage() {
         <h1 className="text-2xl font-black text-white mb-1">Předplatné</h1>
         <p className="text-sm" style={{ color: 'rgba(237,237,237,0.45)' }}>Vyber plán který ti nejvíce vyhovuje.</p>
       </div>
+
+      {/* Trial banner */}
+      {trialEnd && (
+        <div className="mb-6 px-4 py-3 rounded-xl flex items-center gap-3" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span className="text-sm" style={{ color: 'rgba(34,197,94,0.9)' }}>
+            Využíváte <strong>7denní zkušební období Business plánu</strong> — zkušební doba končí <strong>{formatDate(trialEnd)}</strong>.
+          </span>
+        </div>
+      )}
 
       {/* Naplánovaná změna */}
       {pendingPlan && pendingPlanDate && (
@@ -209,6 +225,12 @@ export default function BillingPage() {
                   {plan.badge}
                 </div>
               )}
+              {!isCurrentPlan && !isPendingPlan && !hasSubscription && (plan as { trial?: boolean }).trial && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+                  style={{ background: 'linear-gradient(135deg, #22C55E, #16a34a)', color: '#fff' }}>
+                  7 dní zdarma
+                </div>
+              )}
 
               <div>
                 <p className="text-sm font-semibold mb-1" style={{ color: plan.highlight ? '#00BFFF' : 'rgba(237,237,237,0.5)' }}>{plan.name}</p>
@@ -273,16 +295,25 @@ export default function BillingPage() {
                 </button>
               ) : (
                 // Nový zákazník — přímý checkout
-                <a
-                  href={`/api/stripe/checkout?priceId=${priceId}`}
-                  className="w-full py-3 rounded-xl text-sm font-bold transition-all block text-center"
-                  style={plan.highlight
-                    ? { background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a' }
-                    : { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(237,237,237,0.8)' }
-                  }
-                >
-                  {`Vybrat ${plan.name}`}
-                </a>
+                <div className="flex flex-col gap-1">
+                  <a
+                    href={`/api/stripe/checkout?priceId=${priceId}`}
+                    className="w-full py-3 rounded-xl text-sm font-bold transition-all block text-center"
+                    style={(plan as { trial?: boolean }).trial
+                      ? { background: 'linear-gradient(135deg, #22C55E, #16a34a)', color: '#fff' }
+                      : plan.highlight
+                        ? { background: 'linear-gradient(135deg, #00BFFF, #0090cc)', color: '#0a0a0a' }
+                        : { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(237,237,237,0.8)' }
+                    }
+                  >
+                    {(plan as { trial?: boolean }).trial ? 'Vyzkoušet 7 dní zdarma' : `Vybrat ${plan.name}`}
+                  </a>
+                  {(plan as { trial?: boolean }).trial && (
+                    <p className="text-center text-xs" style={{ color: 'rgba(237,237,237,0.35)' }}>
+                      Pak {plan.monthlyPrice} Kč/měs, zrušit kdykoliv
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           );

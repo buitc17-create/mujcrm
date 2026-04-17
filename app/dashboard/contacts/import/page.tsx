@@ -82,13 +82,13 @@ export default function ImportPage() {
   const autoMap = (hdrs: string[]) => {
     const guesses: Record<string, string> = {};
     const aliases: Record<string, string[]> = {
-      jmeno: ['jméno', 'jmeno', 'first name', 'firstname', 'name', 'křestní', 'krestni'],
-      prijmeni: ['příjmení', 'prijmeni', 'last name', 'lastname', 'surname'],
-      email: ['email', 'e-mail', 'mail'],
-      telefon: ['telefon', 'tel', 'phone', 'mobile', 'mobil'],
-      firma: ['firma', 'company', 'organization', 'společnost'],
-      tag: ['tag', 'typ', 'kategorie', 'category'],
-      poznamky: ['poznámky', 'poznamky', 'notes', 'note', 'popis'],
+      jmeno: ['jméno', 'jmeno', 'first name', 'firstname', 'name', 'křestní', 'krestni', 'first_name', 'given name', 'jméno *'],
+      prijmeni: ['příjmení', 'prijmeni', 'last name', 'lastname', 'surname', 'last_name', 'příjmení '],
+      email: ['email', 'e-mail', 'mail', 'e mail', 'emailová adresa', 'email address'],
+      telefon: ['telefon', 'tel', 'phone', 'mobile', 'mobil', 'telefon ', 'telefonní číslo', 'číslo'],
+      firma: ['firma', 'company', 'organization', 'společnost', 'název firmy', 'nazev firmy', 'organizace', 'employer', 'firm'],
+      tag: ['tag', 'typ', 'kategorie', 'category', 'štítek', 'label'],
+      poznamky: ['poznámky', 'poznamky', 'notes', 'note', 'popis', 'description', 'komentář'],
     };
     for (const [field, alts] of Object.entries(aliases)) {
       const match = hdrs.find(h => alts.includes(h.toLowerCase().trim()));
@@ -170,7 +170,6 @@ export default function ImportPage() {
         if (duplicateMode === 'skip') {
           skipped++;
         } else {
-          // Overwrite
           const id = existingEmailToId[emailVal!];
           const { error } = await supabase.from('contacts').update(record).eq('id', id);
           if (error) errors++; else imported++;

@@ -112,6 +112,28 @@ export async function GET(request: NextRequest) {
           return NextResponse.redirect(new URL('/auth/update-password?invited=true', requestUrl.origin))
         }
       }
+      // Onboarding enroll pro nové uživatele (OAuth) — volaj fire-and-forget
+      const { data: { user: oauthUser } } = await supabase.auth.getUser()
+      if (oauthUser) {
+        const createdAt = new Date(oauthUser.created_at)
+        const isNewUser = (Date.now() - createdAt.getTime()) < 60_000 // registroval se před méně než minutou
+        if (isNewUser) {
+          const adminClient = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          )
+          const userName = oauthUser.user_metadata?.full_name ?? oauthUser.email?.split('@')[0]
+          await adminClient.from('onboarding_enrollments').upsert({
+            user_id: oauthUser.id,
+            user_email: oauthUser.email!,
+            user_name: userName,
+            current_step: 1,
+            status: 'active',
+            plan_at_enrollment: 'trial',
+          }, { onConflict: 'user_id' }).select()
+        }
+      }
+
       return NextResponse.redirect(new URL(next, requestUrl.origin))
     }
   }

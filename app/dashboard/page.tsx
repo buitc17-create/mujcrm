@@ -55,6 +55,19 @@ export default async function DashboardPage() {
     || user.email?.split('@')[0]
     || 'uživateli';
 
+  // Zjisti roli: člen nebo admin
+  const { data: memberRecord } = await supabase
+    .from('team_members').select('owner_id').eq('member_user_id', user.id).eq('status', 'aktivni').maybeSingle();
+  const isMember = !!memberRecord;
+  const ownerId = memberRecord?.owner_id ?? user.id;
+
+  // Admin: zjisti ID aktivních členů (pro oddělení zakázek)
+  const { data: teamMembersData } = !isMember
+    ? await supabase.from('team_members').select('member_user_id').eq('owner_id', user.id).eq('status', 'aktivni')
+    : { data: [] };
+  const memberIds = new Set((teamMembersData ?? []).map((m: { member_user_id: string }) => m.member_user_id));
+  const hasTeam = memberIds.size > 0;
+
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
   const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
@@ -78,6 +91,7 @@ export default async function DashboardPage() {
   const [
     contactsRes,
     dealsRes,
+    stagesRes,
     todayTasksRes,
     overdueTasksRes,
     todayActivitiesRes,
@@ -87,7 +101,10 @@ export default async function DashboardPage() {
     recentRes,
   ] = await Promise.all([
     supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-    supabase.from('deals').select('hodnota, status').eq('user_id', user.id),
+    isMember
+      ? supabase.from('deals').select('hodnota, stage_id, assigned_to').eq('user_id', ownerId).eq('assigned_to', user.id)
+      : supabase.from('deals').select('hodnota, stage_id, assigned_to').eq('user_id', user.id),
+    supabase.from('pipeline_stages').select('id, nazev').eq('user_id', ownerId),
     supabase.from('tasks')
       .select('id, nazev, deadline, priorita, dokonceno')
       .eq('user_id', user.id)
@@ -120,17 +137,33 @@ export default async function DashboardPage() {
       .lt('datum', today)
       .order('datum', { ascending: false })
       .limit(5),
-    supabase.from('deals')
-      .select('id, nazev, hodnota, status, datum_uzavreni, pravdepodobnost')
-      .eq('user_id', user.id),
+    isMember
+      ? supabase.from('deals').select('id, nazev, hodnota, stage_id, assigned_to, datum_uzavreni, pravdepodobnost').eq('user_id', ownerId).eq('assigned_to', user.id)
+      : supabase.from('deals').select('id, nazev, hodnota, stage_id, assigned_to, datum_uzavreni, pravdepodobnost').eq('user_id', user.id),
     supabase.from('contacts').select('id, jmeno, prijmeni, firma, email, tag, created_at')
       .eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
   ]);
 
   const contactsCount = contactsRes.count ?? 0;
+
+  // Rozpoznání vyhraných/prohraných fází podle názvu (stejná logika jako reporting)
+  const WON_KEYWORDS = ['vyhráno', 'vyhrano', 'uzavřeno', 'uzavreno', 'zaplaceno', 'dokončeno', 'dokonceno', 'won', 'closed'];
+  const LOST_KEYWORDS = ['prohráno', 'prohrano', 'ztraceno', 'lost', 'zamítnuto', 'zamitnuto'];
+  const stages = stagesRes.data ?? [];
+  const wonStageIds = new Set(stages.filter(s => WON_KEYWORDS.some(k => s.nazev.toLowerCase().includes(k))).map(s => s.id));
+  const lostStageIds = new Set(stages.filter(s => LOST_KEYWORDS.some(k => s.nazev.toLowerCase().includes(k))).map(s => s.id));
+
   const allDeals = dealsRes.data ?? [];
-  const openDeals = allDeals.filter(d => !['vyhrano', 'prohrano'].includes(d.status)).length;
-  const monthRevenue = allDeals.filter(d => d.status === 'vyhrano').reduce((s, d) => s + (d.hodnota ?? 0), 0);
+  // Admin: oddělíme vlastní zakázky od zakázek členů
+  const ownDeals = isMember ? allDeals : allDeals.filter(d => !memberIds.has(d.assigned_to));
+  const memberDeals = isMember ? [] : allDeals.filter(d => memberIds.has(d.assigned_to));
+
+  const openOwnDealsList = ownDeals.filter(d => !wonStageIds.has(d.stage_id) && !lostStageIds.has(d.stage_id));
+  const openMemberDealsList = isMember ? [] : memberDeals.filter(d => !wonStageIds.has(d.stage_id) && !lostStageIds.has(d.stage_id));
+  const openDeals = openOwnDealsList.length + openMemberDealsList.length;
+  const openDealsValue = [...openOwnDealsList, ...openMemberDealsList].reduce((s, d) => s + (d.hodnota ?? 0), 0);
+  const monthRevenue = ownDeals.filter(d => wonStageIds.has(d.stage_id)).reduce((s, d) => s + (d.hodnota ?? 0), 0);
+  const memberRevenue = memberDeals.filter(d => wonStageIds.has(d.stage_id)).reduce((s, d) => s + (d.hodnota ?? 0), 0);
   const todayTasksList = todayTasksRes.data ?? [];
   const overdueTasksList = overdueTasksRes.data ?? [];
   const todayActivitiesList = (todayActivitiesRes.data ?? []) as unknown as Array<{
@@ -152,28 +185,39 @@ export default async function DashboardPage() {
   }>;
   const recent = recentRes.data ?? [];
 
-  // Monthly deals stats
-  const monthDeals = monthDealsRes.data ?? [];
-  const wonThisMonth = monthDeals.filter(d =>
-    d.status === 'vyhrano' &&
+  // Monthly deals stats — admin vidí vše (vlastní i členů), člen vidí jen své
+  const allMonthDeals = monthDealsRes.data ?? [];
+  const wonThisMonth = allMonthDeals.filter(d =>
+    wonStageIds.has(d.stage_id) &&
     d.datum_uzavreni >= startOfMonth &&
     d.datum_uzavreni < startOfNextMonth
   );
   const wonThisMonthValue = wonThisMonth.reduce((s, d) => s + (d.hodnota ?? 0), 0);
-  const closingThisMonth = monthDeals.filter(d =>
-    !['vyhrano', 'prohrano'].includes(d.status) &&
+  const closingThisMonth = allMonthDeals.filter(d =>
+    !wonStageIds.has(d.stage_id) && !lostStageIds.has(d.stage_id) &&
     d.datum_uzavreni >= startOfMonth &&
     d.datum_uzavreni < startOfNextMonth
   );
   const closingThisMonthValue = closingThisMonth.reduce((s, d) => s + (d.hodnota ?? 0), 0);
-  const openPipelineValue = monthDeals
-    .filter(d => !['vyhrano', 'prohrano'].includes(d.status))
+  const openPipelineValue = allMonthDeals
+    .filter(d => !wonStageIds.has(d.stage_id) && !lostStageIds.has(d.stage_id))
     .reduce((s, d) => s + (d.hodnota ?? 0), 0);
-  const lostThisMonth = monthDeals.filter(d =>
-    d.status === 'prohrano' &&
+  const lostThisMonth = allMonthDeals.filter(d =>
+    lostStageIds.has(d.stage_id) &&
     d.datum_uzavreni >= startOfMonth &&
     d.datum_uzavreni < startOfNextMonth
   ).length;
+
+  // Tým (členové) plánuje uzavřít tento měsíc — jen pro admina s týmem
+  const teamClosingThisMonth = (!isMember && hasTeam)
+    ? allMonthDeals.filter(d =>
+        memberIds.has(d.assigned_to) &&
+        !wonStageIds.has(d.stage_id) && !lostStageIds.has(d.stage_id) &&
+        d.datum_uzavreni >= startOfMonth &&
+        d.datum_uzavreni < startOfNextMonth
+      )
+    : [];
+  const teamClosingThisMonthValue = teamClosingThisMonth.reduce((s, d) => s + (d.hodnota ?? 0), 0);
 
   // Progress: won / (won + closing this month)
   const progressTotal = wonThisMonthValue + closingThisMonthValue;
@@ -183,12 +227,21 @@ export default async function DashboardPage() {
     { label: 'Zákazníků', value: contactsCount.toString(), hint: 'celkem evidovaných', accent: '#00BFFF',
       icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
       href: '/dashboard/contacts' },
-    { label: 'Otevřené zakázky', value: openDeals.toString(), hint: 'v pipeline', accent: '#7B2FFF',
-      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>,
-      href: '/dashboard/deals' },
-    { label: 'Příjmy (vyhráno)', value: fmtKc(monthRevenue), hint: 'celkem uzavřeno', accent: '#10b981',
+    { label: 'Otevřené zakázky', value: openDeals.toString(), hint: fmtKc(openDealsValue), accent: '#7B2FFF',
+      icon: (!isMember && hasTeam)
+        ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>,
+      href: '/dashboard/deals',
+      ...(!isMember && hasTeam ? { sub: `vlastní ${openOwnDealsList.length} · členů ${openMemberDealsList.length}` } : {}),
+    },
+    { label: 'Příjmy (vyhráno)', value: fmtKc(monthRevenue), hint: 'vlastní uzavřené', accent: '#10b981',
       icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
       href: '/dashboard/deals' },
+    ...(hasTeam ? [{
+      label: 'Příjmy člena', value: fmtKc(memberRevenue), hint: 'tým celkem uzavřeno', accent: '#f97316',
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+      href: '/dashboard/team',
+    }] : []),
     { label: 'Úkoly dnes', value: todayTasksList.length.toString(), hint: 'ke splnění dnes', accent: '#f59e0b',
       icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
       href: '/dashboard/tasks' },
@@ -217,7 +270,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div id="stat-cards" className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div id="stat-cards" className={`grid grid-cols-2 gap-4 mb-8 ${hasTeam ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
         {stats.map((s) => (
           <Link key={s.label} href={s.href}
             className="rounded-2xl p-5 transition-all"
@@ -230,6 +283,9 @@ export default async function DashboardPage() {
             </div>
             <p className="text-2xl font-black text-white mb-0.5">{s.value}</p>
             <p className="text-xs" style={{ color: s.accent + 'bb' }}>{s.hint}</p>
+            {'sub' in s && s.sub && (
+              <p className="text-xs mt-1" style={{ color: 'rgba(237,237,237,0.35)' }}>{s.sub}</p>
+            )}
           </Link>
         ))}
       </div>
@@ -436,6 +492,22 @@ export default async function DashboardPage() {
                 {closingThisMonth.length} zak.
               </span>
             </div>
+
+            {/* Team closing this month — jen pro admina s týmem */}
+            {!isMember && hasTeam && (
+              <>
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium mb-0.5" style={{ color: 'rgba(237,237,237,0.5)' }}>Tým plánuje uzavřít</p>
+                    <p className="text-xl font-black text-white">{fmtKc(teamClosingThisMonthValue)}</p>
+                  </div>
+                  <span className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background: 'rgba(249,115,22,0.12)', color: '#f97316' }}>
+                    {teamClosingThisMonth.length} zak.
+                  </span>
+                </div>
+              </>
+            )}
 
             {/* Progress bar */}
             {progressTotal > 0 && (

@@ -58,6 +58,7 @@ const plans = [
     desc: 'Pro firmy které rostou rychle a potřebují více.',
     badge: null,
     highlight: false,
+    trial: true,
     features: [
       'Vše z plánů Start a Tým',
       'Pokročilý reporting s KPI',
@@ -65,8 +66,8 @@ const plans = [
       'Prioritní podpora',
       'Až 10 členů týmu',
     ],
-    cta: 'Začít s Business',
-    ctaStyle: 'outline',
+    cta: 'Vyzkoušet 7 dní zdarma',
+    ctaStyle: 'green',
   },
   {
     key: 'ENTERPRISE' as const,
@@ -181,6 +182,14 @@ export default function Pricing() {
                     {plan.badge}
                   </div>
                 )}
+                {(plan as { trial?: boolean }).trial && (
+                  <div
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+                    style={{ background: 'linear-gradient(135deg, #22C55E, #16a34a)', color: '#fff' }}
+                  >
+                    7 dní zdarma
+                  </div>
+                )}
 
                 <div>
                   <p className="text-sm font-semibold mb-1" style={{ color: plan.highlight ? '#00BFFF' : 'rgba(237,237,237,0.5)' }}>
@@ -216,13 +225,23 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                <a
-                  href={href}
-                  className={plan.ctaStyle === 'cyan' ? 'btn-cyan' : 'btn-outline'}
-                  style={{ display: 'block', textAlign: 'center', padding: '12px 20px', borderRadius: '12px', fontSize: '14px', fontWeight: 600, width: '100%' }}
-                >
-                  {plan.cta}
-                </a>
+                <div className="flex flex-col gap-1">
+                  <a
+                    href={href}
+                    className={plan.ctaStyle === 'cyan' ? 'btn-cyan' : plan.ctaStyle === 'green' ? '' : 'btn-outline'}
+                    style={plan.ctaStyle === 'green'
+                      ? { display: 'block', textAlign: 'center', padding: '12px 20px', borderRadius: '12px', fontSize: '14px', fontWeight: 600, width: '100%', background: 'linear-gradient(135deg, #22C55E, #16a34a)', color: '#fff', textDecoration: 'none' }
+                      : { display: 'block', textAlign: 'center', padding: '12px 20px', borderRadius: '12px', fontSize: '14px', fontWeight: 600, width: '100%' }
+                    }
+                  >
+                    {plan.cta}
+                  </a>
+                  {(plan as { trial?: boolean }).trial && (
+                    <p className="text-center text-xs" style={{ color: 'rgba(237,237,237,0.35)' }}>
+                      Pak {plan.monthlyPrice} Kč/měs, zrušit kdykoliv
+                    </p>
+                  )}
+                </div>
               </div>
             );
           })}

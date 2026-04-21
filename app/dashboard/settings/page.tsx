@@ -638,6 +638,103 @@ export default function SettingsPage() {
       </div>
 
       {/* ══════════════════════════════════════
+          EMAILOVÁ SCHRÁNKA
+      ══════════════════════════════════════ */}
+      <div style={cardStyle}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+              style={{ background: 'rgba(0,191,255,0.12)', color: '#00BFFF' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white mb-0.5">Emailová schránka</h2>
+              <p className="text-sm" style={{ color: 'rgba(237,237,237,0.45)' }}>
+                Propoj vlastní emailovou schránku a piš emaily přímo z CRM.
+              </p>
+            </div>
+          </div>
+          <a href="/dashboard/settings/email"
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+            style={{ background: 'rgba(0,191,255,0.1)', border: '1px solid rgba(0,191,255,0.25)', color: '#00BFFF' }}>
+            Nastavit email →
+          </a>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════
+          GOOGLE KALENDÁŘ
+      ══════════════════════════════════════ */}
+      <Suspense fallback={null}>
+        <GoogleCalendarCard showToast={showToast} />
+      </Suspense>
+
+      {/* ══════════════════════════════════════
+          MICROSOFT KALENDÁŘ
+      ══════════════════════════════════════ */}
+      <Suspense fallback={null}>
+        <MicrosoftCalendarCard showToast={showToast} />
+      </Suspense>
+
+      {/* ══════════════════════════════════════
+          MOBILNÍ APLIKACE (PWA)
+      ══════════════════════════════════════ */}
+      <div style={cardStyle}>
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+            style={{ background: 'rgba(0,191,255,0.1)' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00BFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2"/>
+              <line x1="12" y1="18" x2="12" y2="18.01"/>
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white mb-0.5">Mobilní aplikace</h2>
+            <p className="text-sm" style={{ color: 'rgba(237,237,237,0.5)' }}>
+              Přidej MujCRM na plochu mobilu jako aplikaci — funguje i offline.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {/* iOS */}
+          <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(237,237,237,0.6)">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+              </svg>
+              <span className="text-xs font-semibold" style={{ color: 'rgba(237,237,237,0.7)' }}>iPhone / iPad</span>
+            </div>
+            <ol className="text-xs flex flex-col gap-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>
+              <li>1. Otevři <strong className="text-white">mujcrm.cz</strong> v Safari</li>
+              <li>2. Klepni na ikonu <strong className="text-white">Sdílet</strong> (čtverec se šipkou nahoru)</li>
+              <li>3. Vyber <strong className="text-white">„Přidat na plochu"</strong></li>
+              <li>4. Potvrď tlačítkem <strong className="text-white">Přidat</strong></li>
+            </ol>
+          </div>
+
+          {/* Android */}
+          <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(237,237,237,0.6)">
+                <path d="M17.523 15.341A7.5 7.5 0 1 0 6.477 8.66a7.5 7.5 0 0 0 11.046 6.681zM12 2.25a9.75 9.75 0 1 1 0 19.5 9.75 9.75 0 0 1 0-19.5z"/>
+              </svg>
+              <span className="text-xs font-semibold" style={{ color: 'rgba(237,237,237,0.7)' }}>Android</span>
+            </div>
+            <ol className="text-xs flex flex-col gap-1.5" style={{ color: 'rgba(237,237,237,0.5)' }}>
+              <li>1. Otevři <strong className="text-white">mujcrm.cz</strong> v Chrome</li>
+              <li>2. Klepni na <strong className="text-white">⋮ menu</strong> (tři tečky vpravo nahoře)</li>
+              <li>3. Vyber <strong className="text-white">„Přidat na plochu"</strong></li>
+              <li>4. Nebo počkej na automatický banner od Chrome</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════
           GDPR & DATA
       ══════════════════════════════════════ */}
       <div style={cardStyle}>
@@ -748,48 +845,6 @@ export default function SettingsPage() {
           Spustit průvodce znovu
         </button>
       </div>
-
-      {/* ══════════════════════════════════════
-          EMAILOVÁ SCHRÁNKA
-      ══════════════════════════════════════ */}
-      <div style={cardStyle}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-              style={{ background: 'rgba(0,191,255,0.12)', color: '#00BFFF' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-white mb-0.5">Emailová schránka</h2>
-              <p className="text-sm" style={{ color: 'rgba(237,237,237,0.45)' }}>
-                Propoj vlastní emailovou schránku a piš emaily přímo z CRM.
-              </p>
-            </div>
-          </div>
-          <a href="/dashboard/settings/email"
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
-            style={{ background: 'rgba(0,191,255,0.1)', border: '1px solid rgba(0,191,255,0.25)', color: '#00BFFF' }}>
-            Nastavit email →
-          </a>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════
-          GOOGLE KALENDÁŘ
-      ══════════════════════════════════════ */}
-      <Suspense fallback={null}>
-        <GoogleCalendarCard showToast={showToast} />
-      </Suspense>
-
-      {/* ══════════════════════════════════════
-          MICROSOFT KALENDÁŘ
-      ══════════════════════════════════════ */}
-      <Suspense fallback={null}>
-        <MicrosoftCalendarCard showToast={showToast} />
-      </Suspense>
 
       {/* ══════════════════════════════════════
           MODAL — Smazat účet

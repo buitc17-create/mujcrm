@@ -6,6 +6,7 @@ import nodemailer from 'nodemailer'
 import Stripe from 'stripe'
 import { PLANS } from '@/lib/stripe-config'
 import { buildTrialEndEmailHtml } from '@/lib/trialEndEmailHtml'
+import { buildPaymentFailedEmailHtml } from '@/lib/paymentFailedEmailHtml'
 
 function planFromPriceId(priceId: string): string {
   for (const [key, plan] of Object.entries(PLANS)) {
@@ -120,6 +121,49 @@ export async function POST(req: Request) {
           to: userEmail,
           subject: 'Váš bezplatný měsíc právě skončil — co dál?',
           html: buildTrialEndEmailHtml(),
+        })
+      } catch { /* tiché selhání — neblokuj webhook */ }
+
+      break
+    }
+    case 'invoice.payment_failed': {
+      const invoice = event.data.object as Stripe.Invoice
+      const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+      if (!customerId) break
+
+      const { data: profile } = await adminClient
+        .from('profiles')
+        .select('id')
+        .eq('stripe_customer_id', customerId)
+        .single()
+      if (!profile) break
+
+      const { data: authUser } = await adminClient.auth.admin.getUserById(profile.id)
+      const userEmail = authUser.user?.email
+      if (!userEmail) break
+
+      const systemSmtpUser = process.env.SYSTEM_SMTP_USER
+      const systemSmtpPass = process.env.SYSTEM_SMTP_PASS
+      const systemSmtpFrom = process.env.SYSTEM_SMTP_FROM ?? systemSmtpUser
+      if (!systemSmtpUser || !systemSmtpPass) break
+
+      const amountDue = invoice.amount_due
+        ? `${(invoice.amount_due / 100).toFixed(0)} Kč`
+        : ''
+
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SYSTEM_SMTP_HOST ?? 'smtp.gmail.com',
+          port: Number(process.env.SYSTEM_SMTP_PORT ?? 465),
+          secure: process.env.SYSTEM_SMTP_SECURE !== 'false',
+          auth: { user: systemSmtpUser, pass: systemSmtpPass },
+        })
+
+        await transporter.sendMail({
+          from: `"MujCRM" <${systemSmtpFrom}>`,
+          to: userEmail,
+          subject: 'Platba se nezdařila — aktualizujte prosím platební údaje',
+          html: buildPaymentFailedEmailHtml(amountDue),
         })
       } catch { /* tiché selhání — neblokuj webhook */ }
 

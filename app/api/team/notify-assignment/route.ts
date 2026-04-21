@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
 import { decryptPassword } from '@/lib/emailCrypto'
+import { getWebPush } from '@/lib/webpush'
 
 function assignmentEmailHtml({
   memberName, ownerName, itemName, typeLabel, typePath, appUrl, mode, itemType, itemValue,
@@ -174,6 +175,36 @@ export async function POST(request: Request) {
   } catch (err) {
     smtpError = err instanceof Error ? err.message : 'SMTP error'
   }
+
+  // Push notification — send to assignee immediately
+  try {
+    const { data: subs } = await admin
+      .from('push_subscriptions')
+      .select('endpoint, p256dh, auth')
+      .eq('user_id', assignedToId)
+
+    if (subs?.length) {
+      const wp = getWebPush()
+      const pushTitle = type === 'deal'
+        ? `📋 Byla vám přiřazena zakázka`
+        : `✅ Byl vám přiřazen úkol`
+      const pushPayload = JSON.stringify({
+        title: pushTitle,
+        body: itemName,
+        url: `/dashboard/${typePath}`,
+      })
+      for (const sub of subs) {
+        try {
+          await wp.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+            pushPayload
+          )
+        } catch {
+          await admin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+        }
+      }
+    }
+  } catch { /* tiché selhání */ }
 
   return NextResponse.json({ ok: !smtpError, error: smtpError })
 }

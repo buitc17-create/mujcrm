@@ -5,10 +5,27 @@ import { useState } from 'react';
 export default function ContactForm() {
   const [gdpr, setGdpr] = useState(false);
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [fields, setFields] = useState({ name: '', email: '', company: '', message: '' });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      });
+      if (!res.ok) throw new Error('Chyba');
+      setSent(true);
+    } catch {
+      setError('Nepodařilo se odeslat zprávu. Zkuste to prosím znovu nebo napište na info@mujcrm.cz');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,6 +83,8 @@ export default function ContactForm() {
                   type="text"
                   required
                   placeholder="Jan Novák"
+                  value={fields.name}
+                  onChange={e => setFields(f => ({ ...f, name: e.target.value }))}
                   className="rounded-xl px-4 py-3 text-sm outline-none transition-all"
                   style={{
                     background: 'rgba(255,255,255,0.05)',
@@ -84,6 +103,8 @@ export default function ContactForm() {
                   type="email"
                   required
                   placeholder="jan@firma.cz"
+                  value={fields.email}
+                  onChange={e => setFields(f => ({ ...f, email: e.target.value }))}
                   className="rounded-xl px-4 py-3 text-sm outline-none transition-all"
                   style={{
                     background: 'rgba(255,255,255,0.05)',
@@ -103,6 +124,8 @@ export default function ContactForm() {
               <input
                 type="text"
                 placeholder="Vaše firma s.r.o."
+                value={fields.company}
+                onChange={e => setFields(f => ({ ...f, company: e.target.value }))}
                 className="rounded-xl px-4 py-3 text-sm outline-none transition-all"
                 style={{
                   background: 'rgba(255,255,255,0.05)',
@@ -122,6 +145,8 @@ export default function ContactForm() {
                 required
                 rows={4}
                 placeholder="Jak vám můžeme pomoci?"
+                value={fields.message}
+                onChange={e => setFields(f => ({ ...f, message: e.target.value }))}
                 className="rounded-xl px-4 py-3 text-sm outline-none transition-all resize-none"
                 style={{
                   background: 'rgba(255,255,255,0.05)',
@@ -132,6 +157,10 @@ export default function ContactForm() {
                 onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
               />
             </div>
+
+            {error && (
+              <p className="text-sm" style={{ color: '#ff6b6b' }}>{error}</p>
+            )}
 
             <label className="flex items-start gap-3 cursor-pointer select-none">
               <div
@@ -165,11 +194,11 @@ export default function ContactForm() {
 
             <button
               type="submit"
-              disabled={!gdpr}
+              disabled={!gdpr || loading}
               className="btn-cyan inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold mt-1 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Odeslat zprávu
-              <span>→</span>
+              {loading ? 'Odesílám…' : 'Odeslat zprávu'}
+              {!loading && <span>→</span>}
             </button>
           </form>
         )}

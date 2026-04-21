@@ -228,6 +228,12 @@ export default function LeadsPage() {
           body: JSON.stringify({ lead_id: (data as Lead).id, sequence_id: form.sequence_id }),
         });
       }
+      // Push notifikace — nový lead
+      fetch('/api/leads/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadName: `${form.jmeno} ${form.prijmeni}`.trim() }),
+      }).catch(() => {});
     }
     setForm({ jmeno: '', prijmeni: '', email: '', telefon: '', firma: '', zdroj: 'jine', lead_status_id: statuses[0]?.id ?? '', skore: 3, poznamky: '', assigned_to: '', cena: '', sequence_id: '' });
     setShowModal(false);

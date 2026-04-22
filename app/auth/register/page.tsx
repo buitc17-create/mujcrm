@@ -66,6 +66,13 @@ export default function RegisterPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: data.user.id, email: data.user.email, name }),
         }).catch(() => {});
+
+        // Interní notifikace o nové registraci
+        fetch('/api/admin/notify-new-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email: data.user.email }),
+        }).catch(() => {});
       }
       setSuccess(true);
     }

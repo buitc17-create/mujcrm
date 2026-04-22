@@ -131,6 +131,13 @@ export async function GET(request: NextRequest) {
             status: 'active',
             plan_at_enrollment: 'trial',
           }, { onConflict: 'user_id' }).select()
+
+          // Interní notifikace o nové registraci (OAuth)
+          fetch(`${requestUrl.origin}/api/admin/notify-new-user`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: userName, email: oauthUser.email }),
+          }).catch(() => {})
         }
       }
 

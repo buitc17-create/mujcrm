@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import CookieConsent from "./components/CookieConsent";
+
+const GA_ID = "G-P9DZEWP7PX";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -179,6 +182,13 @@ export default function RootLayout({
         <meta name="theme-color" content="#0a0a0a" />
       </head>
       <body className="min-h-full flex flex-col" style={{ background: '#0a0a0a', color: '#ededed' }}>
+        <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
+        <Script id="ga-init" strategy="afterInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '${GA_ID}', { page_path: window.location.pathname });
+        `}</Script>
         {children}
         <CookieConsent />
       </body>

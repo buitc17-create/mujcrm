@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import Link from 'next/link';
-import { exportDealsPDF } from '@/lib/pdfExport';
 
 type Stage = { id: string; nazev: string; barva: string; poradi: number };
 
@@ -531,29 +530,6 @@ export default function DealsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              const allDeals = stages.flatMap(s => (dealsByStage[s.id] ?? []).map(d => ({
-                nazev: d.nazev,
-                hodnota: d.hodnota,
-                pravdepodobnost: d.pravdepodobnost,
-                stage: s.nazev,
-                datum_uzavreni: d.datum_uzavreni,
-                kontakt: d.contacts ? `${d.contacts.jmeno} ${d.contacts.prijmeni ?? ''}`.trim() : undefined,
-              })));
-              exportDealsPDF(allDeals);
-            }}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all"
-            style={{ background: 'rgba(0,191,255,0.08)', border: '1px solid rgba(0,191,255,0.2)', color: '#00BFFF' }}
-            title="Stáhnout PDF"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <span className="hidden sm:inline">PDF</span>
-          </button>
           <button
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"

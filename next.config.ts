@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['jspdf', 'jspdf-autotable', 'html2canvas'],
   reactCompiler: true,
   compress: true,
   images: {

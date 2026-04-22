@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { exportReportsPDF } from '@/lib/pdfExport';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -205,7 +204,6 @@ export default function ReportsPage() {
   const [loadingMember, setLoadingMember] = useState(false);
   const [goalDrafts, setGoalDrafts] = useState<Record<string, string>>({});
   const [exporting, setExporting] = useState<string | null>(null);
-  const [exportingPDF, setExportingPDF] = useState(false);
 
   const load = useCallback(async () => {
     // Zjisti zda je přihlášený uživatel člen (ne admin)
@@ -603,44 +601,6 @@ export default function ReportsPage() {
              'Export dat do CSV'}
           </p>
         </div>
-        {section !== 'exporty' && (
-          <button
-            onClick={async () => {
-              setExportingPDF(true);
-              await exportReportsPDF({
-                revenueThisMonth,
-                revenueThisYear,
-                weightedTotal,
-                winRate,
-                monthlyData,
-                pipelineData,
-                top5: top5.map(d => ({
-                  nazev: d.nazev,
-                  hodnota: d.hodnota,
-                  kontakt: d.contacts ? `${d.contacts.jmeno}${d.contacts.prijmeni ? ' ' + d.contacts.prijmeni : ''}` : null,
-                })),
-                totalLeads,
-                convertedLeads,
-                conversionRate,
-                newLeadsThisMonth,
-                leadsBySource,
-                activityByType: activityByType.map(a => ({ label: a.label, count: a.count })),
-                totalActivitiesLast30: recentActivities.length,
-              });
-              setExportingPDF(false);
-            }}
-            disabled={exportingPDF}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
-            style={{ background: 'rgba(0,191,255,0.1)', border: '1px solid rgba(0,191,255,0.25)', color: '#00BFFF' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            {exportingPDF ? 'Generuji…' : 'PDF'}
-          </button>
-        )}
         {teamMembers.length > 1 && section !== 'exporty' && (
           <div className="flex items-center gap-2 flex-wrap">
             <button

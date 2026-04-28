@@ -56,11 +56,12 @@ export async function POST(req: Request) {
         const userName = fullSession.customer_details?.name ?? userEmail.split('@')[0]
 
         // Voucher info
-        const discounts = (fullSession.discounts ?? []) as Stripe.Discount[]
-        const voucherParts = discounts.map(d => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const discounts = (fullSession.discounts ?? []) as any[]
+        const voucherParts = discounts.map((d: any) => {
           const coupon = d.coupon as Stripe.Coupon
-          const code = (d.promotion_code as Stripe.PromotionCode | null)?.code ?? coupon.id
-          const off = coupon.percent_off ? `${coupon.percent_off} %` : coupon.amount_off ? `${(coupon.amount_off / 100).toFixed(0)} Kč` : ''
+          const code = (d.promotion_code as Stripe.PromotionCode | null)?.code ?? coupon?.id ?? ''
+          const off = coupon?.percent_off ? `${coupon.percent_off} %` : coupon?.amount_off ? `${(coupon.amount_off / 100).toFixed(0)} Kč` : ''
           return off ? `${code} (${off})` : code
         })
         const voucherText = voucherParts.length > 0 ? voucherParts.join(', ') : null

@@ -133,7 +133,7 @@ export default function DealsPage() {
     if (!user) return;
     const poradi = items.length;
     const { data, error } = await supabase.from('deal_items').insert({
-      deal_id: selectedDeal.id, user_id: ownerId ?? user.id,
+      deal_id: selectedDeal.id, user_id: user.id,
       nazev: 'Nová položka', mnozstvi: 1, jednotka: 'ks', cena_za_kus: 0, sleva_procent: 0, poradi,
     }).select('*').single();
     if (error) {
@@ -185,7 +185,7 @@ export default function DealsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data } = await supabase.from('deal_items').insert({
-      deal_id: selectedDeal.id, user_id: ownerId ?? user.id,
+      deal_id: selectedDeal.id, user_id: user.id,
       nazev: tpl.nazev, popis: tpl.popis, mnozstvi: tpl.mnozstvi,
       jednotka: tpl.jednotka, cena_za_kus: tpl.cena_za_kus,
       sleva_procent: tpl.sleva_procent, poradi: items.length,

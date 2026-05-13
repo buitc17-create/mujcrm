@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface AdminUser {
@@ -17,6 +17,9 @@ interface AdminUser {
   periodStart: string | null;
   periodEnd: string | null;
   subscriptionStatus: string | null;
+  trialDaysLeft: number | null;
+  discountDaysLeft: number | null;
+  discountCode: string | null;
 }
 
 const PLAN_LABELS: Record<string, string> = {
@@ -320,7 +323,7 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
       <div className="rounded-2xl p-5 mb-8" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
         <p className="text-xs font-semibold mb-4" style={{ color: 'rgba(237,237,237,0.45)' }}>ROZLOŽENÍ DLE TARIFU</p>
         <div className="flex flex-wrap gap-3">
-          {['free', 'start', 'tym', 'business', 'enterprise'].map(plan => {
+          {['start', 'tym', 'business', 'enterprise'].map(plan => {
             const count = planCounts[plan] ?? 0;
             if (count === 0) return null;
             return (
@@ -380,6 +383,7 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
                 <th className="text-left px-4 py-3 font-semibold cursor-pointer select-none" style={{ color: 'rgba(237,237,237,0.45)' }} onClick={() => toggleSort('plan')}>
                   <span className="flex items-center gap-1.5">Tarif <SortIcon col="plan" /></span>
                 </th>
+                <th className="text-left px-4 py-3 font-semibold" style={{ color: 'rgba(237,237,237,0.45)' }}>Dny zdarma</th>
                 <th className="text-left px-4 py-3 font-semibold" style={{ color: 'rgba(237,237,237,0.45)' }}>Fakturace</th>
                 <th className="text-left px-4 py-3 font-semibold cursor-pointer select-none" style={{ color: 'rgba(237,237,237,0.45)' }} onClick={() => toggleSort('periodEnd')}>
                   <span className="flex items-center gap-1.5">Období <SortIcon col="periodEnd" /></span>
@@ -423,13 +427,12 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
                         onClick={() => setPlanEditId(planEditId === u.id ? null : u.id)}
                         title="Kliknutím změníte tarif"
                         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
-                        style={{
-                          background: `${PLAN_COLORS[u.plan]}18`,
-                          border: `1px solid ${PLAN_COLORS[u.plan]}40`,
-                          color: PLAN_COLORS[u.plan],
-                        }}
+                        style={u.plan === 'free'
+                          ? { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.3)' }
+                          : { background: `${PLAN_COLORS[u.plan]}18`, border: `1px solid ${PLAN_COLORS[u.plan]}40`, color: PLAN_COLORS[u.plan] }
+                        }
                       >
-                        {PLAN_LABELS[u.plan] ?? u.plan}
+                        {u.plan === 'free' ? '—' : (PLAN_LABELS[u.plan] ?? u.plan)}
                         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
                       </button>
 
@@ -454,6 +457,30 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
                             </button>
                           ))}
                         </div>
+                      )}
+                    </div>
+                  </td>
+
+                  {/* Dny zdarma */}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1">
+                      {u.trialDaysLeft !== null && u.trialDaysLeft > 0 && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold w-fit"
+                          style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22C55E' }}>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          Trial {u.trialDaysLeft} dní
+                        </span>
+                      )}
+                      {u.discountDaysLeft !== null && u.discountDaysLeft > 0 && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold w-fit"
+                          style={{ background: 'rgba(0,191,255,0.1)', border: '1px solid rgba(0,191,255,0.3)', color: '#00BFFF' }}>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                          {u.discountCode && <span style={{ opacity: 0.7 }}>{u.discountCode}</span>}
+                          {u.discountDaysLeft} dní
+                        </span>
+                      )}
+                      {!u.trialDaysLeft && !u.discountDaysLeft && (
+                        <span style={{ color: 'rgba(237,237,237,0.25)' }}>—</span>
                       )}
                     </div>
                   </td>

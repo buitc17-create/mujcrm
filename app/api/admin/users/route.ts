@@ -13,6 +13,10 @@ function getBillingInterval(priceId: string): 'monthly' | 'yearly' | null {
   return null
 }
 
+function daysLeft(unixTs: number): number {
+  return Math.ceil((unixTs * 1000 - Date.now()) / 86400000)
+}
+
 export async function GET() {
   const cookieStore = await cookies()
   const token = cookieStore.get('admin_token')?.value
@@ -33,7 +37,6 @@ export async function GET() {
     .select('id, plan, stripe_customer_id, stripe_subscription_id, pending_plan, pending_plan_date')
 
   const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
-
   const paidProfiles = (profiles ?? []).filter(p => p.stripe_subscription_id)
 
   const stripeSubMap = new Map<string, {
@@ -41,21 +44,45 @@ export async function GET() {
     periodStart: string
     periodEnd: string
     status: string
+    trialDaysLeft: number | null
+    discountDaysLeft: number | null
+    discountCode: string | null
   }>()
 
   await Promise.all(
     paidProfiles.map(async (p) => {
       try {
-        const sub = await stripe.subscriptions.retrieve(p.stripe_subscription_id!)
+        const sub = await stripe.subscriptions.retrieve(p.stripe_subscription_id!, {
+          expand: ['discounts.coupon', 'discounts.promotion_code'],
+        })
         const item = sub.items.data[0]
         const priceId = item?.price?.id ?? ''
         const periodStart = item?.current_period_start ?? sub.billing_cycle_anchor
         const periodEnd = item?.current_period_end ?? sub.billing_cycle_anchor
+
+        // Trial
+        const trialDaysLeft = (sub.status === 'trialing' && sub.trial_end && sub.trial_end > Date.now() / 1000)
+          ? daysLeft(sub.trial_end)
+          : null
+
+        // Voucher / discount (Stripe v21 používá discounts[])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const firstDiscount = ((sub.discounts ?? []) as any[])[0] ?? null
+        const discountEnd: number | null = firstDiscount?.end ?? null
+        const discountDaysLeft = (discountEnd && discountEnd > Date.now() / 1000)
+          ? daysLeft(discountEnd)
+          : null
+        const discountCode: string | null =
+          firstDiscount?.promotion_code?.code ?? firstDiscount?.coupon?.id ?? null
+
         stripeSubMap.set(p.id, {
           interval: getBillingInterval(priceId),
           periodStart: new Date(periodStart * 1000).toISOString(),
           periodEnd: new Date(periodEnd * 1000).toISOString(),
           status: sub.status,
+          trialDaysLeft,
+          discountDaysLeft,
+          discountCode,
         })
       } catch { /* předplatné neexistuje nebo bylo smazáno */ }
     })
@@ -78,6 +105,9 @@ export async function GET() {
       periodStart: stripeSub?.periodStart ?? null,
       periodEnd: stripeSub?.periodEnd ?? null,
       subscriptionStatus: stripeSub?.status ?? null,
+      trialDaysLeft: stripeSub?.trialDaysLeft ?? null,
+      discountDaysLeft: stripeSub?.discountDaysLeft ?? null,
+      discountCode: stripeSub?.discountCode ?? null,
     }
   })
 

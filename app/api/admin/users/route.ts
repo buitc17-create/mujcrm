@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { PLANS } from '@/lib/stripe-config'
+import { verifyAdminToken } from '@/lib/adminAuth'
+import { cookies } from 'next/headers'
 
 function getBillingInterval(priceId: string): 'monthly' | 'yearly' | null {
   for (const plan of Object.values(PLANS)) {
@@ -13,12 +14,9 @@ function getBillingInterval(priceId: string): 'monthly' | 'yearly' | null {
 }
 
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL
-  if (!superAdminEmail || user.email !== superAdminEmail) {
+  const cookieStore = await cookies()
+  const token = cookieStore.get('admin_token')?.value
+  if (!token || !verifyAdminToken(token)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -27,18 +25,15 @@ export async function GET() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Všichni auth uživatelé
   const { data: authData } = await adminClient.auth.admin.listUsers({ perPage: 1000 })
   const authUsers = authData?.users ?? []
 
-  // Všechny profily
   const { data: profiles } = await adminClient
     .from('profiles')
     .select('id, plan, stripe_customer_id, stripe_subscription_id, pending_plan, pending_plan_date')
 
   const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
 
-  // Stripe data pro placené profily
   const paidProfiles = (profiles ?? []).filter(p => p.stripe_subscription_id)
 
   const stripeSubMap = new Map<string, {

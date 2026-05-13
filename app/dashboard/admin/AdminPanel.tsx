@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface AdminUser {
   id: string;
@@ -64,7 +65,8 @@ function formatDateTime(iso: string | null) {
   return new Date(iso).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric' });
 }
 
-export default function AdminPanel() {
+export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
+  const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,16 +156,31 @@ export default function AdminPanel() {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,80,80,0.15)', border: '1px solid rgba(255,80,80,0.3)' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF5050" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,80,80,0.15)', border: '1px solid rgba(255,80,80,0.3)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF5050" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-black text-white">Super Admin</h1>
           </div>
-          <h1 className="text-2xl font-black text-white">Super Admin</h1>
+          <p className="text-sm" style={{ color: 'rgba(237,237,237,0.4)' }}>Správa uživatelů a předplatných napříč celou platformou.</p>
         </div>
-        <p className="text-sm" style={{ color: 'rgba(237,237,237,0.4)' }}>Správa uživatelů a předplatných napříč celou platformou.</p>
+        {onLogout && (
+          <button
+            onClick={async () => {
+              await fetch('/api/admin/auth', { method: 'DELETE' });
+              router.push('/admin');
+              router.refresh();
+            }}
+            className="px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.5)' }}
+          >
+            Odhlásit
+          </button>
+        )}
       </div>
 
       {/* Stats */}

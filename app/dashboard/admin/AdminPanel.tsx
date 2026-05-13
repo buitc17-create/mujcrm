@@ -437,7 +437,7 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
                       </button>
 
                       {planEditId === u.id && (
-                        <div className="absolute left-0 top-full mt-1 z-30 rounded-xl overflow-hidden shadow-xl" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.12)', minWidth: 140 }}>
+                        <div className="absolute left-0 bottom-full mb-1 z-30 rounded-xl overflow-hidden shadow-xl" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.12)', minWidth: 140 }}>
                           {PLAN_OPTIONS.map(opt => (
                             <button
                               key={opt.value}

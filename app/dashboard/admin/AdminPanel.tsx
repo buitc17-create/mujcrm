@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface AdminUser {
@@ -20,12 +20,20 @@ interface AdminUser {
 }
 
 const PLAN_LABELS: Record<string, string> = {
-  free: 'Free',
+  free: 'Bez tarifu',
   start: 'Start',
   tym: 'Tým',
   business: 'Business',
   enterprise: 'Enterprise',
 };
+
+const PLAN_OPTIONS = [
+  { value: 'free', label: 'Bez tarifu' },
+  { value: 'start', label: 'Start' },
+  { value: 'tym', label: 'Tým' },
+  { value: 'business', label: 'Business' },
+  { value: 'enterprise', label: 'Enterprise' },
+];
 
 const PLAN_COLORS: Record<string, string> = {
   free: 'rgba(237,237,237,0.3)',
@@ -77,6 +85,15 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [planEditId, setPlanEditId] = useState<string | null>(null);
+  const [planSaving, setPlanSaving] = useState(false);
+
+  useEffect(() => {
+    if (!planEditId) return;
+    function handleClick() { setPlanEditId(null); }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [planEditId]);
 
   useEffect(() => {
     fetch('/api/admin/users')
@@ -110,6 +127,24 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
       setDeleteError('Nepodařilo se smazat uživatele.');
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handlePlanChange(userId: string, newPlan: string) {
+    setPlanSaving(true);
+    try {
+      const res = await fetch('/api/admin/update-plan', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, plan: newPlan }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, plan: newPlan } : u));
+      }
+    } finally {
+      setPlanSaving(false);
+      setPlanEditId(null);
     }
   }
 
@@ -383,19 +418,44 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
 
                   {/* Tarif */}
                   <td className="px-4 py-3">
-                    <span
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
-                      style={{
-                        background: `${PLAN_COLORS[u.plan]}18`,
-                        border: `1px solid ${PLAN_COLORS[u.plan]}40`,
-                        color: PLAN_COLORS[u.plan],
-                      }}
-                    >
-                      {PLAN_LABELS[u.plan] ?? u.plan}
-                      {u.pendingPlan && (
-                        <span style={{ color: '#FFB400', fontSize: 9 }}>→ {PLAN_LABELS[u.pendingPlan]}</span>
+                    <div className="relative">
+                      <button
+                        onClick={() => setPlanEditId(planEditId === u.id ? null : u.id)}
+                        title="Kliknutím změníte tarif"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
+                        style={{
+                          background: `${PLAN_COLORS[u.plan]}18`,
+                          border: `1px solid ${PLAN_COLORS[u.plan]}40`,
+                          color: PLAN_COLORS[u.plan],
+                        }}
+                      >
+                        {PLAN_LABELS[u.plan] ?? u.plan}
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                      </button>
+
+                      {planEditId === u.id && (
+                        <div className="absolute left-0 top-full mt-1 z-30 rounded-xl overflow-hidden shadow-xl" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.12)', minWidth: 140 }}>
+                          {PLAN_OPTIONS.map(opt => (
+                            <button
+                              key={opt.value}
+                              disabled={planSaving}
+                              onClick={() => handlePlanChange(u.id, opt.value)}
+                              className="w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center gap-2 transition-all"
+                              style={{
+                                background: u.plan === opt.value ? `${PLAN_COLORS[opt.value]}18` : 'transparent',
+                                color: u.plan === opt.value ? PLAN_COLORS[opt.value] : 'rgba(237,237,237,0.7)',
+                              }}
+                              onMouseEnter={e => { if (u.plan !== opt.value) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                              onMouseLeave={e => { if (u.plan !== opt.value) e.currentTarget.style.background = 'transparent'; }}
+                            >
+                              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: PLAN_COLORS[opt.value] }} />
+                              {opt.label}
+                              {u.plan === opt.value && <span className="ml-auto">✓</span>}
+                            </button>
+                          ))}
+                        </div>
                       )}
-                    </span>
+                    </div>
                   </td>
 
                   {/* Fakturace */}

@@ -74,6 +74,9 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
   const [planFilter, setPlanFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'createdAt' | 'plan' | 'periodEnd'>('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/users')
@@ -85,6 +88,30 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
       .catch(() => setError('Nepodařilo se načíst data.'))
       .finally(() => setLoading(false));
   }, []);
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: deleteTarget.id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsers(prev => prev.filter(u => u.id !== deleteTarget.id));
+        setDeleteTarget(null);
+      } else {
+        setDeleteError(data.error ?? 'Chyba při mazání.');
+      }
+    } catch {
+      setDeleteError('Nepodařilo se smazat uživatele.');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const paidUsers = users.filter(u => u.plan !== 'free');
   const freeUsers = users.filter(u => u.plan === 'free');
@@ -156,6 +183,62 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+      {/* Potvrzovací dialog smazání */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+          <div className="w-full max-w-md rounded-2xl p-6" style={{ background: '#161616', border: '1px solid rgba(255,80,80,0.3)' }}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,80,80,0.15)', border: '1px solid rgba(255,80,80,0.3)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF5050" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-black text-white">Smazat uživatele?</h3>
+                <p className="text-xs mt-0.5" style={{ color: 'rgba(237,237,237,0.45)' }}>Tato akce je nevratná</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl px-4 py-3 mb-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <p className="text-sm font-semibold text-white">{deleteTarget.email}</p>
+              {deleteTarget.fullName && <p className="text-xs mt-0.5" style={{ color: 'rgba(237,237,237,0.4)' }}>{deleteTarget.fullName}</p>}
+            </div>
+
+            <p className="text-sm mb-1" style={{ color: 'rgba(237,237,237,0.6)', lineHeight: 1.6 }}>
+              Budou trvale smazána <strong style={{ color: '#fff' }}>veškerá data uživatele</strong> — kontakty, zakázky, leady, úkoly, aktivity, e-maily a nastavení.
+            </p>
+            <p className="text-xs mb-5" style={{ color: 'rgba(237,237,237,0.4)', lineHeight: 1.6 }}>
+              Uživateli bude odesláno e-mailové oznámení o smazání účtu.
+              {deleteTarget.stripeSubscriptionId && ' Aktivní Stripe předplatné bude zrušeno.'}
+            </p>
+
+            {deleteError && (
+              <div className="mb-4 px-3 py-2 rounded-lg text-xs" style={{ background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.25)', color: '#FF5050' }}>
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.6)' }}
+              >
+                Zrušit
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+                style={{ background: deleting ? 'rgba(255,80,80,0.3)' : 'rgba(255,80,80,0.9)', color: '#fff', opacity: deleting ? 0.7 : 1 }}
+              >
+                {deleting ? 'Mažu…' : 'Smazat trvale'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
@@ -270,6 +353,7 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
                 <th className="text-left px-4 py-3 font-semibold cursor-pointer select-none" style={{ color: 'rgba(237,237,237,0.45)' }} onClick={() => toggleSort('createdAt')}>
                   <span className="flex items-center gap-1.5">Registrace <SortIcon col="createdAt" /></span>
                 </th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -367,6 +451,22 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
                   {/* Registrace */}
                   <td className="px-4 py-3 text-xs" style={{ color: 'rgba(237,237,237,0.45)' }}>
                     {formatDateTime(u.createdAt)}
+                  </td>
+
+                  {/* Akce */}
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => { setDeleteTarget(u); setDeleteError(null); }}
+                      title="Smazat uživatele"
+                      className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+                      style={{ background: 'rgba(255,80,80,0.08)', border: '1px solid rgba(255,80,80,0.2)', color: 'rgba(255,80,80,0.6)' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,80,80,0.18)'; e.currentTarget.style.color = '#FF5050'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,80,80,0.08)'; e.currentTarget.style.color = 'rgba(255,80,80,0.6)'; }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                      </svg>
+                    </button>
                   </td>
                 </tr>
               ))}

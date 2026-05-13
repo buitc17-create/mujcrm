@@ -88,15 +88,9 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [planEditId, setPlanEditId] = useState<string | null>(null);
+  const [planEditTarget, setPlanEditTarget] = useState<AdminUser | null>(null);
   const [planSaving, setPlanSaving] = useState(false);
 
-  useEffect(() => {
-    if (!planEditId) return;
-    function handleClick() { setPlanEditId(null); }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [planEditId]);
 
   useEffect(() => {
     fetch('/api/admin/users')
@@ -144,10 +138,10 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
       const data = await res.json();
       if (data.success) {
         setUsers(prev => prev.map(u => u.id === userId ? { ...u, plan: newPlan } : u));
+        setPlanEditTarget(null);
       }
     } finally {
       setPlanSaving(false);
-      setPlanEditId(null);
     }
   }
 
@@ -221,6 +215,45 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+      {/* Modál výběru tarifu */}
+      {planEditTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
+          <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: '#161616', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-black text-white">Změnit tarif</h3>
+                <p className="text-xs mt-0.5 truncate max-w-[220px]" style={{ color: 'rgba(237,237,237,0.45)' }}>{planEditTarget.email}</p>
+              </div>
+              <button onClick={() => setPlanEditTarget(null)} className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(237,237,237,0.5)' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {PLAN_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  disabled={planSaving}
+                  onClick={() => handlePlanChange(planEditTarget.id, opt.value)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                  style={{
+                    background: planEditTarget.plan === opt.value ? `${PLAN_COLORS[opt.value]}18` : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${planEditTarget.plan === opt.value ? PLAN_COLORS[opt.value] + '50' : 'rgba(255,255,255,0.07)'}`,
+                    color: planEditTarget.plan === opt.value ? PLAN_COLORS[opt.value] : 'rgba(237,237,237,0.75)',
+                    opacity: planSaving ? 0.5 : 1,
+                  }}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: PLAN_COLORS[opt.value] }} />
+                  {opt.label}
+                  {planEditTarget.plan === opt.value && (
+                    <span className="ml-auto text-xs font-bold" style={{ color: PLAN_COLORS[opt.value] }}>Aktuální</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Potvrzovací dialog smazání */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
@@ -422,43 +455,18 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
 
                   {/* Tarif */}
                   <td className="px-4 py-3">
-                    <div className="relative">
-                      <button
-                        onClick={() => setPlanEditId(planEditId === u.id ? null : u.id)}
-                        title="Kliknutím změníte tarif"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
-                        style={u.plan === 'free'
-                          ? { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.3)' }
-                          : { background: `${PLAN_COLORS[u.plan]}18`, border: `1px solid ${PLAN_COLORS[u.plan]}40`, color: PLAN_COLORS[u.plan] }
-                        }
-                      >
-                        {u.plan === 'free' ? '—' : (PLAN_LABELS[u.plan] ?? u.plan)}
-                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                      </button>
-
-                      {planEditId === u.id && (
-                        <div className="absolute left-0 bottom-full mb-1 z-30 rounded-xl overflow-hidden shadow-xl" style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.12)', minWidth: 140 }}>
-                          {PLAN_OPTIONS.map(opt => (
-                            <button
-                              key={opt.value}
-                              disabled={planSaving}
-                              onClick={() => handlePlanChange(u.id, opt.value)}
-                              className="w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center gap-2 transition-all"
-                              style={{
-                                background: u.plan === opt.value ? `${PLAN_COLORS[opt.value]}18` : 'transparent',
-                                color: u.plan === opt.value ? PLAN_COLORS[opt.value] : 'rgba(237,237,237,0.7)',
-                              }}
-                              onMouseEnter={e => { if (u.plan !== opt.value) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-                              onMouseLeave={e => { if (u.plan !== opt.value) e.currentTarget.style.background = 'transparent'; }}
-                            >
-                              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: PLAN_COLORS[opt.value] }} />
-                              {opt.label}
-                              {u.plan === opt.value && <span className="ml-auto">✓</span>}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => setPlanEditTarget(u)}
+                      title="Kliknutím změníte tarif"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
+                      style={u.plan === 'free'
+                        ? { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.3)' }
+                        : { background: `${PLAN_COLORS[u.plan]}18`, border: `1px solid ${PLAN_COLORS[u.plan]}40`, color: PLAN_COLORS[u.plan] }
+                      }
+                    >
+                      {u.plan === 'free' ? '—' : (PLAN_LABELS[u.plan] ?? u.plan)}
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
                   </td>
 
                   {/* Dny zdarma */}

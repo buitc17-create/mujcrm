@@ -29,10 +29,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .maybeSingle();
 
   const isAdmin = !memberRecord;
+  const isSuperAdmin = user.email === process.env.SUPER_ADMIN_EMAIL && !!process.env.SUPER_ADMIN_EMAIL;
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#0a0a0a' }}>
-      <Sidebar name={fullName} email={email} initials={initials} isAdmin={isAdmin} />
+      <Sidebar name={fullName} email={email} initials={initials} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />
       <main className="flex-1 lg:ml-60 pt-14 lg:pt-0 overflow-y-auto h-full">
         <OnboardingSync />
         <NotificationSetup />

@@ -173,9 +173,10 @@ interface SidebarProps {
   email: string;
   initials: string;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
 }
 
-export default function Sidebar({ name, email, initials, isAdmin }: SidebarProps) {
+export default function Sidebar({ name, email, initials, isAdmin, isSuperAdmin }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -281,6 +282,25 @@ export default function Sidebar({ name, email, initials, isAdmin }: SidebarProps
             </Link>
           );
         })}
+
+        {/* Super Admin odkaz */}
+        {isSuperAdmin && (
+          <Link
+            href="/dashboard/admin"
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 mt-2 text-sm font-semibold transition-all"
+            style={{
+              background: pathname.startsWith('/dashboard/admin') ? 'rgba(255,80,80,0.1)' : 'rgba(255,80,80,0.05)',
+              color: pathname.startsWith('/dashboard/admin') ? '#FF5050' : 'rgba(255,80,80,0.6)',
+              border: pathname.startsWith('/dashboard/admin') ? '1px solid rgba(255,80,80,0.3)' : '1px solid rgba(255,80,80,0.1)',
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            Super Admin
+          </Link>
+        )}
 
         {/* Sync tlačítko pod nav položkami */}
         <button

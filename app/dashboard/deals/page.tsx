@@ -13,6 +13,8 @@ type Deal = {
   datum_uzavreni: string | null; contact_id: string | null; poznamky?: string | null;
   priorita: string; pravdepodobnost: number; zdroj: string; assigned_to?: string | null;
   assignment_status?: string | null;
+  doporucitel_jmeno?: string | null; doporucitel_prijmeni?: string | null; doporucitel_telefon?: string | null;
+  provize_procent: number | null; provize_castka: number | null;
   contacts?: { jmeno: string; prijmeni: string | null; firma: string | null } | null;
 };
 type Contact = { id: string; jmeno: string; prijmeni: string | null; firma: string | null };
@@ -47,16 +49,18 @@ const ZDROJ = [
   { id: 'telefon', label: 'Telefon' },
   { id: 'email', label: 'Email' },
   { id: 'socialni_site', label: 'Sociální sítě' },
+  { id: 'financni_poradce', label: 'Finanční poradce' },
+  { id: 'od_manazera', label: 'Od manažera' },
   { id: 'jine', label: 'Jiné' },
 ];
 
 function fmtKc(v: number) { return v ? v.toLocaleString('cs-CZ') + ' Kč' : '–'; }
 function priorityColor(p: string) { return PRIORITY.find(x => x.id === p)?.color ?? '#6b7280'; }
 
-const DEAL_SELECT = 'id, nazev, hodnota, status, stage_id, datum_uzavreni, contact_id, priorita, pravdepodobnost, zdroj, assigned_to, assignment_status, contacts(jmeno, prijmeni, firma)';
+const DEAL_SELECT = 'id, nazev, hodnota, provize_procent, provize_castka, status, stage_id, datum_uzavreni, contact_id, priorita, pravdepodobnost, zdroj, doporucitel_jmeno, doporucitel_prijmeni, doporucitel_telefon, assigned_to, assignment_status, contacts(jmeno, prijmeni, firma)';
 
 type TeamMember = { id: string; name: string; email: string; role: string; isOwner: boolean };
-const emptyForm = () => ({ nazev: '', hodnota: '', contact_id: '', datum_uzavreni: '', stage_id: '', priorita: 'stredni', pravdepodobnost: '50', zdroj: 'jine', assigned_to: '' });
+const emptyForm = () => ({ nazev: '', hodnota: '', contact_id: '', datum_uzavreni: '', stage_id: '', priorita: 'stredni', pravdepodobnost: '50', zdroj: 'jine', doporucitel_jmeno: '', doporucitel_prijmeni: '', doporucitel_telefon: '', assigned_to: '', provize_procent: '', provize_castka: '' });
 
 export default function DealsPage() {
   const supabase = createClient();
@@ -69,7 +73,7 @@ export default function DealsPage() {
   const [newDeal, setNewDeal] = useState(emptyForm());
 
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
-  const [editForm, setEditForm] = useState({ nazev: '', hodnota: '', stage_id: '', contact_id: '', datum_uzavreni: '', priorita: 'stredni', pravdepodobnost: '50', zdroj: 'jine', assigned_to: '' });
+  const [editForm, setEditForm] = useState({ nazev: '', hodnota: '', stage_id: '', contact_id: '', datum_uzavreni: '', priorita: 'stredni', pravdepodobnost: '50', zdroj: 'jine', doporucitel_jmeno: '', doporucitel_prijmeni: '', doporucitel_telefon: '', assigned_to: '', provize_procent: '', provize_castka: '' });
   const [editSaving, setEditSaving] = useState(false);
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -305,7 +309,12 @@ export default function DealsPage() {
       priorita: deal.priorita ?? 'stredni',
       pravdepodobnost: deal.pravdepodobnost != null ? String(deal.pravdepodobnost) : '50',
       zdroj: deal.zdroj ?? 'jine',
+      doporucitel_jmeno: deal.doporucitel_jmeno ?? '',
+      doporucitel_prijmeni: deal.doporucitel_prijmeni ?? '',
+      doporucitel_telefon: deal.doporucitel_telefon ?? '',
       assigned_to: deal.assigned_to ?? '',
+      provize_procent: deal.provize_procent != null ? String(deal.provize_procent) : '',
+      provize_castka: deal.provize_castka != null ? String(deal.provize_castka) : '',
     });
     loadItems(deal.id);
   };
@@ -347,7 +356,12 @@ export default function DealsPage() {
       priorita: newDeal.priorita,
       pravdepodobnost: parseInt(newDeal.pravdepodobnost) || 50,
       zdroj: newDeal.zdroj,
+      doporucitel_jmeno: newDeal.zdroj === 'doporuceni' ? (newDeal.doporucitel_jmeno.trim() || null) : null,
+      doporucitel_prijmeni: newDeal.zdroj === 'doporuceni' ? (newDeal.doporucitel_prijmeni.trim() || null) : null,
+      doporucitel_telefon: newDeal.zdroj === 'doporuceni' ? (newDeal.doporucitel_telefon.trim() || null) : null,
       assigned_to: newDeal.assigned_to || null,
+      provize_procent: parseFloat(newDeal.provize_procent) || null,
+      provize_castka: parseFloat(newDeal.provize_castka) || null,
     };
 
     let data: Deal | null = null;
@@ -430,7 +444,12 @@ export default function DealsPage() {
       priorita: editForm.priorita,
       pravdepodobnost: parseInt(editForm.pravdepodobnost) || 50,
       zdroj: editForm.zdroj,
+      doporucitel_jmeno: editForm.zdroj === 'doporuceni' ? (editForm.doporucitel_jmeno.trim() || null) : null,
+      doporucitel_prijmeni: editForm.zdroj === 'doporuceni' ? (editForm.doporucitel_prijmeni.trim() || null) : null,
+      doporucitel_telefon: editForm.zdroj === 'doporuceni' ? (editForm.doporucitel_telefon.trim() || null) : null,
       assigned_to: newAssignedTo,
+      provize_procent: parseFloat(editForm.provize_procent) || null,
+      provize_castka: parseFloat(editForm.provize_castka) || null,
     };
 
     // Reset assignment_status when assignment changes
@@ -556,6 +575,7 @@ export default function DealsPage() {
             {stages.map(stage => {
               const colDeals = dealsByStage[stage.id] ?? [];
               const colTotal = colDeals.reduce((s, d) => s + d.hodnota, 0);
+              const colProvize = colDeals.reduce((s, d) => s + (d.provize_castka ?? 0), 0);
               return (
                 <div key={stage.id} className="flex-shrink-0 w-64 flex flex-col">
                   <div className="flex items-center justify-between mb-3">
@@ -568,7 +588,10 @@ export default function DealsPage() {
                     </span>
                   </div>
                   {colTotal > 0 && (
-                    <p className="text-xs mb-2" style={{ color: stage.barva + 'bb' }}>{fmtKc(colTotal)}</p>
+                    <p className="text-xs mb-1" style={{ color: stage.barva + 'bb' }}>{fmtKc(colTotal)}</p>
+                  )}
+                  {colProvize > 0 && (
+                    <p className="text-xs mb-2" style={{ color: '#f59e0b' }}>Provize: {fmtKc(colProvize)}</p>
                   )}
 
                   <Droppable droppableId={stage.id}>
@@ -634,8 +657,16 @@ export default function DealsPage() {
 
                                   {/* Value */}
                                   {deal.hodnota > 0 && (
-                                    <p className="text-sm font-black mb-2" style={{ color: stage.barva }}>
+                                    <p className="text-sm font-black mb-1" style={{ color: stage.barva }}>
                                       {deal.hodnota.toLocaleString('cs-CZ')} Kč
+                                    </p>
+                                  )}
+                                  {deal.provize_castka != null && deal.provize_castka > 0 && (
+                                    <p className="text-xs font-semibold mb-2" style={{ color: '#f59e0b' }}>
+                                      Provize: {deal.provize_castka.toLocaleString('cs-CZ')} Kč
+                                      {deal.provize_procent != null && deal.provize_procent > 0 && (
+                                        <span style={{ color: 'rgba(245,158,11,0.6)', fontWeight: 400 }}> ({deal.provize_procent} %)</span>
+                                      )}
                                     </p>
                                   )}
 
@@ -763,6 +794,42 @@ export default function DealsPage() {
                   onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
               </div>
               <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Moje provize
+                  <span style={{ color: 'rgba(237,237,237,0.25)', fontWeight: 400 }}>— volitelné</span>
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <input type="number" min="0" max="100" step="0.1" placeholder="0"
+                      value={newDeal.provize_procent}
+                      onChange={e => {
+                        const pct = e.target.value;
+                        const val = parseFloat(newDeal.hodnota) || 0;
+                        const castka = pct !== '' && val > 0 ? String(Math.round((parseFloat(pct) || 0) / 100 * val)) : newDeal.provize_castka;
+                        setNewDeal(p => ({ ...p, provize_procent: pct, provize_castka: castka }));
+                      }}
+                      style={{ ...inputStyle, paddingRight: '28px' }}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(245,158,11,0.5)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(237,237,237,0.35)', fontSize: 12, pointerEvents: 'none' }}>%</span>
+                  </div>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <input type="number" min="0" placeholder="0"
+                      value={newDeal.provize_castka}
+                      onChange={e => {
+                        const castka = e.target.value;
+                        const val = parseFloat(newDeal.hodnota) || 0;
+                        const pct = castka !== '' && val > 0 ? String(+(((parseFloat(castka) || 0) / val * 100).toFixed(1))) : newDeal.provize_procent;
+                        setNewDeal(p => ({ ...p, provize_castka: castka, provize_procent: pct }));
+                      }}
+                      style={{ ...inputStyle, paddingRight: '30px' }}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(245,158,11,0.5)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+                    <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(237,237,237,0.35)', fontSize: 12, pointerEvents: 'none' }}>Kč</span>
+                  </div>
+                </div>
+              </div>
+              <div>
                 <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Datum uzavření</label>
                 <input type="date" value={newDeal.datum_uzavreni}
                   onChange={e => setNewDeal(p => ({ ...p, datum_uzavreni: e.target.value }))}
@@ -845,6 +912,24 @@ export default function DealsPage() {
                   {ZDROJ.map(z => <option key={z.id} value={z.id} style={{ background: '#1a1a1a' }}>{z.label}</option>)}
                 </select>
               </div>
+              {newDeal.zdroj === 'doporuceni' && (
+                <div className="grid grid-cols-1 gap-3 p-3 rounded-xl" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Jméno doporučitele</label>
+                      <input type="text" value={newDeal.doporucitel_jmeno} onChange={e => setNewDeal(p => ({ ...p, doporucitel_jmeno: e.target.value }))} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Příjmení doporučitele</label>
+                      <input type="text" value={newDeal.doporucitel_prijmeni} onChange={e => setNewDeal(p => ({ ...p, doporucitel_prijmeni: e.target.value }))} style={inputStyle} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Telefon doporučitele</label>
+                    <input type="tel" value={newDeal.doporucitel_telefon} onChange={e => setNewDeal(p => ({ ...p, doporucitel_telefon: e.target.value }))} style={inputStyle} />
+                  </div>
+                </div>
+              )}
               {teamMembers.length > 1 && (
                 <div>
                   <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Přiřadit členovi týmu</label>
@@ -979,6 +1064,42 @@ export default function DealsPage() {
                       onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')} onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
                   </div>
                   <div>
+                    <label className="block text-xs font-semibold mb-1.5" style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      Moje provize
+                      <span style={{ color: 'rgba(237,237,237,0.25)', fontWeight: 400 }}>— volitelné</span>
+                    </label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <input type="number" min="0" max="100" step="0.1" placeholder="0"
+                          value={editForm.provize_procent}
+                          onChange={e => {
+                            const pct = e.target.value;
+                            const val = parseFloat(editForm.hodnota) || 0;
+                            const castka = pct !== '' && val > 0 ? String(Math.round((parseFloat(pct) || 0) / 100 * val)) : editForm.provize_castka;
+                            setEditForm(p => ({ ...p, provize_procent: pct, provize_castka: castka }));
+                          }}
+                          style={{ ...inputStyle, paddingRight: '28px' }}
+                          onFocus={e => (e.currentTarget.style.borderColor = 'rgba(245,158,11,0.5)')}
+                          onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+                        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(237,237,237,0.35)', fontSize: 12, pointerEvents: 'none' }}>%</span>
+                      </div>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <input type="number" min="0" placeholder="0"
+                          value={editForm.provize_castka}
+                          onChange={e => {
+                            const castka = e.target.value;
+                            const val = parseFloat(editForm.hodnota) || 0;
+                            const pct = castka !== '' && val > 0 ? String(+(((parseFloat(castka) || 0) / val * 100).toFixed(1))) : editForm.provize_procent;
+                            setEditForm(p => ({ ...p, provize_castka: castka, provize_procent: pct }));
+                          }}
+                          style={{ ...inputStyle, paddingRight: '30px' }}
+                          onFocus={e => (e.currentTarget.style.borderColor = 'rgba(245,158,11,0.5)')}
+                          onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+                        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(237,237,237,0.35)', fontSize: 12, pointerEvents: 'none' }}>Kč</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
                     <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Fáze pipeline</label>
                     <select value={editForm.stage_id} onChange={e => setEditForm(p => ({ ...p, stage_id: e.target.value }))} style={{ ...inputStyle, cursor: 'pointer' }}>
                       {stages.map(s => <option key={s.id} value={s.id} style={{ background: '#1a1a1a' }}>{s.nazev}</option>)}
@@ -1019,6 +1140,24 @@ export default function DealsPage() {
                       {ZDROJ.map(z => <option key={z.id} value={z.id} style={{ background: '#1a1a1a' }}>{z.label}</option>)}
                     </select>
                   </div>
+                  {editForm.zdroj === 'doporuceni' && (
+                    <div className="grid grid-cols-1 gap-3 p-3 rounded-xl" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Jméno doporučitele</label>
+                          <input type="text" value={editForm.doporucitel_jmeno} onChange={e => setEditForm(p => ({ ...p, doporucitel_jmeno: e.target.value }))} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Příjmení doporučitele</label>
+                          <input type="text" value={editForm.doporucitel_prijmeni} onChange={e => setEditForm(p => ({ ...p, doporucitel_prijmeni: e.target.value }))} style={inputStyle} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Telefon doporučitele</label>
+                        <input type="tel" value={editForm.doporucitel_telefon} onChange={e => setEditForm(p => ({ ...p, doporucitel_telefon: e.target.value }))} style={inputStyle} />
+                      </div>
+                    </div>
+                  )}
                   {teamMembers.length > 1 && (
                     <div>
                       <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Předat členovi týmu</label>

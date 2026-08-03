@@ -25,7 +25,7 @@ export async function GET() {
 
   const [{ data: deals }, { data: stages }, { data: contacts }] = await Promise.all([
     admin.from('deals')
-      .select('id, nazev, hodnota, status, stage_id, datum_uzavreni, contact_id, priorita, pravdepodobnost, zdroj, assigned_to, assignment_status, contacts(jmeno, prijmeni, firma)')
+      .select('id, nazev, hodnota, provize_procent, provize_castka, status, stage_id, datum_uzavreni, contact_id, priorita, pravdepodobnost, zdroj, doporucitel_jmeno, doporucitel_prijmeni, doporucitel_telefon, assigned_to, assignment_status, contacts(jmeno, prijmeni, firma)')
       .eq('user_id', ownerId)
       .eq('assigned_to', user.id)
       .order('created_at', { ascending: false }),
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
   const { data, error } = await admin
     .from('deals')
     .insert({ ...body, user_id: memberRecord.owner_id })
-    .select('id, nazev, hodnota, status, stage_id, datum_uzavreni, contact_id, priorita, pravdepodobnost, zdroj, assigned_to, assignment_status, contacts(jmeno, prijmeni, firma)')
+    .select('id, nazev, hodnota, status, stage_id, datum_uzavreni, contact_id, priorita, pravdepodobnost, zdroj, doporucitel_jmeno, doporucitel_prijmeni, doporucitel_telefon, assigned_to, assignment_status, contacts(jmeno, prijmeni, firma)')
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

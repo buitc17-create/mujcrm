@@ -30,7 +30,7 @@ export async function GET() {
       .eq('assigned_to', user.id)
       .order('created_at', { ascending: false }),
     admin.from('deals')
-      .select('id, nazev, hodnota, status, stage_id, datum_uzavreni, contact_id, priorita, pravdepodobnost, zdroj, assigned_to, assignment_status, contacts(jmeno, prijmeni, firma)')
+      .select('id, nazev, hodnota, status, stage_id, datum_uzavreni, contact_id, priorita, pravdepodobnost, zdroj, doporucitel_jmeno, doporucitel_prijmeni, doporucitel_telefon, assigned_to, assignment_status, contacts(jmeno, prijmeni, firma)')
       .eq('user_id', ownerId)
       .eq('assigned_to', user.id)
       .order('created_at', { ascending: false }),

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   if (!memberRecord) return NextResponse.json({ error: 'Nejsi člen týmu' }, { status: 403 })
 
   const body = await request.json()
-  const { nazev, hodnota, contact_id, stage_id, status, priorita, pravdepodobnost, zdroj } = body
+  const { nazev, hodnota, contact_id, stage_id, status, priorita, pravdepodobnost, zdroj, doporucitel_jmeno, doporucitel_prijmeni, doporucitel_telefon } = body
 
   if (!nazev?.trim()) return NextResponse.json({ error: 'Název je povinný' }, { status: 400 })
   if (!stage_id) return NextResponse.json({ error: 'Fáze pipeline je povinná' }, { status: 400 })
@@ -46,6 +46,9 @@ export async function POST(request: Request) {
       priorita: priorita ?? 'stredni',
       pravdepodobnost: pravdepodobnost ?? 50,
       zdroj: zdroj ?? 'jine',
+      doporucitel_jmeno: doporucitel_jmeno || null,
+      doporucitel_prijmeni: doporucitel_prijmeni || null,
+      doporucitel_telefon: doporucitel_telefon || null,
     })
     .select('id')
     .single()

@@ -10,6 +10,7 @@ type Contact = {
   id: string; jmeno: string; prijmeni: string | null; email: string | null;
   telefon: string | null; firma: string | null; tag: string; poznamky: string | null; created_at: string;
   datum_narozeni: string | null;
+  doporucitel_jmeno: string | null; doporucitel_prijmeni: string | null; doporucitel_telefon: string | null;
 };
 type Deal = { id: string; nazev: string; hodnota: number; status: string; datum_uzavreni: string | null };
 type PipelineStage = { id: string; nazev: string; barva: string; poradi: number };
@@ -256,6 +257,13 @@ export default function ContactDetailPage() {
                     <span className="flex items-center gap-1">
                       <span style={{ fontSize: 13 }}>🎂</span>
                       {new Date(contact.datum_narozeni + 'T12:00:00').toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long' })}
+                    </span>
+                  )}
+                  {(contact.doporucitel_jmeno || contact.doporucitel_prijmeni) && (
+                    <span className="flex items-center gap-1">
+                      <span style={{ fontSize: 13 }}>👤</span>
+                      Doporučil: {[contact.doporucitel_jmeno, contact.doporucitel_prijmeni].filter(Boolean).join(' ')}
+                      {contact.doporucitel_telefon ? ` · ${contact.doporucitel_telefon}` : ''}
                     </span>
                   )}
                 </div>

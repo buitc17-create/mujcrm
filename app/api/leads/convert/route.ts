@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const ownerId = memberRecord?.owner_id ?? user.id
 
   const body = await request.json()
-  const { lead_id, jmeno, prijmeni, email, telefon, firma, zdroj, create_deal, deal_name, deal_value, stage_id } = body
+  const { lead_id, jmeno, prijmeni, email, telefon, firma, zdroj, doporucitel_jmeno, doporucitel_prijmeni, doporucitel_telefon, create_deal, deal_name, deal_value, stage_id } = body
 
   // 1. Create contact — use user.id so it appears in the converter's own contacts list
   const { data: contact, error: contactError } = await admin
@@ -37,6 +37,9 @@ export async function POST(request: Request) {
       telefon: telefon || null,
       firma: firma || null,
       tag: 'zákazník',
+      doporucitel_jmeno: doporucitel_jmeno || null,
+      doporucitel_prijmeni: doporucitel_prijmeni || null,
+      doporucitel_telefon: doporucitel_telefon || null,
     })
     .select('id')
     .single()
@@ -61,6 +64,9 @@ export async function POST(request: Request) {
         priorita: 'stredni',
         pravdepodobnost: 50,
         zdroj: zdroj ?? 'jine',
+        doporucitel_jmeno: doporucitel_jmeno || null,
+        doporucitel_prijmeni: doporucitel_prijmeni || null,
+        doporucitel_telefon: doporucitel_telefon || null,
       })
       .select('id')
       .single()

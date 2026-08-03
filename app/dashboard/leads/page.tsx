@@ -10,6 +10,7 @@ import Link from 'next/link';
 type Lead = {
   id: string; jmeno: string; prijmeni: string | null; email: string | null;
   telefon: string | null; firma: string | null; zdroj: string;
+  doporucitel_jmeno: string | null; doporucitel_prijmeni: string | null; doporucitel_telefon: string | null;
   lead_status_id: string | null; skore: number; poznamky: string | null;
   konvertovan: boolean; created_at: string;
   cena: number | null; popis: string | null;
@@ -39,6 +40,8 @@ const SOURCES = [
   { id: 'telefon', label: 'Telefon', color: '#f59e0b' },
   { id: 'email', label: 'Email', color: '#7B2FFF' },
   { id: 'socialni_site', label: 'Sociální sítě', color: '#00BFFF' },
+  { id: 'financni_poradce', label: 'Finanční poradce', color: '#EAB308' },
+  { id: 'od_manazera', label: 'Od manažera', color: '#f97316' },
   { id: 'jine', label: 'Jiné', color: '#6b7280' },
 ];
 
@@ -82,7 +85,7 @@ export default function LeadsPage() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [enrollmentMap, setEnrollmentMap] = useState<Record<string, string>>({});
   const [sequences, setSequences] = useState<{ id: string; name: string }[]>([]);
-  const [form, setForm] = useState({ jmeno: '', prijmeni: '', email: '', telefon: '', firma: '', zdroj: 'jine', lead_status_id: '', skore: 3, poznamky: '', assigned_to: '', cena: '', sequence_id: '' });
+  const [form, setForm] = useState({ jmeno: '', prijmeni: '', email: '', telefon: '', firma: '', zdroj: 'jine', doporucitel_jmeno: '', doporucitel_prijmeni: '', doporucitel_telefon: '', lead_status_id: '', skore: 3, poznamky: '', assigned_to: '', cena: '', sequence_id: '' });
 
   const statusInfo = useCallback((id: string | null) => {
     if (!id) return statuses[0] ?? { id: '', nazev: '–', barva: '#6b7280' };
@@ -206,6 +209,9 @@ export default function LeadsPage() {
       telefon: form.telefon.trim() || null,
       firma: form.firma.trim() || null,
       zdroj: form.zdroj,
+      doporucitel_jmeno: form.zdroj === 'doporuceni' ? (form.doporucitel_jmeno.trim() || null) : null,
+      doporucitel_prijmeni: form.zdroj === 'doporuceni' ? (form.doporucitel_prijmeni.trim() || null) : null,
+      doporucitel_telefon: form.zdroj === 'doporuceni' ? (form.doporucitel_telefon.trim() || null) : null,
       status: 'novy',
       lead_status_id: form.lead_status_id || statuses[0]?.id || null,
       skore: form.skore,
@@ -235,7 +241,7 @@ export default function LeadsPage() {
         body: JSON.stringify({ leadName: `${form.jmeno} ${form.prijmeni}`.trim() }),
       }).catch(() => {});
     }
-    setForm({ jmeno: '', prijmeni: '', email: '', telefon: '', firma: '', zdroj: 'jine', lead_status_id: statuses[0]?.id ?? '', skore: 3, poznamky: '', assigned_to: '', cena: '', sequence_id: '' });
+    setForm({ jmeno: '', prijmeni: '', email: '', telefon: '', firma: '', zdroj: 'jine', doporucitel_jmeno: '', doporucitel_prijmeni: '', doporucitel_telefon: '', lead_status_id: statuses[0]?.id ?? '', skore: 3, poznamky: '', assigned_to: '', cena: '', sequence_id: '' });
     setShowModal(false);
     setSaving(false);
   };
@@ -589,6 +595,30 @@ export default function LeadsPage() {
                   </select>
                 </div>
               </div>
+              {form.zdroj === 'doporuceni' && (
+                <div className="grid grid-cols-1 gap-3 p-3 rounded-xl" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold mb-1" style={{ color: 'rgba(237,237,237,0.5)' }}>Jméno doporučeného</label>
+                      <input type="text" value={form.doporucitel_jmeno} onChange={e => setForm(p => ({ ...p, doporucitel_jmeno: e.target.value }))} style={inputStyle}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')}
+                        onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1" style={{ color: 'rgba(237,237,237,0.5)' }}>Příjmení doporučeného</label>
+                      <input type="text" value={form.doporucitel_prijmeni} onChange={e => setForm(p => ({ ...p, doporucitel_prijmeni: e.target.value }))} style={inputStyle}
+                        onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')}
+                        onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: 'rgba(237,237,237,0.5)' }}>Telefon doporučeného</label>
+                    <input type="tel" value={form.doporucitel_telefon} onChange={e => setForm(p => ({ ...p, doporucitel_telefon: e.target.value }))} style={inputStyle}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'rgba(0,191,255,0.5)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')} />
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold mb-1" style={{ color: 'rgba(237,237,237,0.5)' }}>Cena (Kč)</label>
                 <input type="number" min={0} step={1} value={form.cena} onChange={e => setForm(p => ({ ...p, cena: e.target.value }))} placeholder="0"

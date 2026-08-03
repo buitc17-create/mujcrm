@@ -11,6 +11,7 @@ import EmailComposer from '@/app/dashboard/components/EmailComposer';
 type Lead = {
   id: string; jmeno: string; prijmeni: string | null; email: string | null;
   telefon: string | null; firma: string | null; zdroj: string;
+  doporucitel_jmeno: string | null; doporucitel_prijmeni: string | null; doporucitel_telefon: string | null;
   lead_status_id: string | null; skore: number; poznamky: string | null;
   konvertovan: boolean; created_at: string; contact_id: string | null;
   cena: number | null; popis: string | null;
@@ -48,6 +49,8 @@ const SOURCES = [
   { id: 'telefon', label: 'Telefon', color: '#f59e0b' },
   { id: 'email', label: 'Email', color: '#7B2FFF' },
   { id: 'socialni_site', label: 'Sociální sítě', color: '#00BFFF' },
+  { id: 'financni_poradce', label: 'Finanční poradce', color: '#EAB308' },
+  { id: 'od_manazera', label: 'Od manažera', color: '#f97316' },
   { id: 'jine', label: 'Jiné', color: '#6b7280' },
 ];
 
@@ -324,6 +327,9 @@ export default function LeadDetailPage() {
         telefon: lead.telefon,
         firma: lead.firma,
         zdroj: lead.zdroj,
+        doporucitel_jmeno: lead.doporucitel_jmeno,
+        doporucitel_prijmeni: lead.doporucitel_prijmeni,
+        doporucitel_telefon: lead.doporucitel_telefon,
         create_deal: convForm.createDeal && !!convForm.nazevObchodu.trim(),
         deal_name: convForm.nazevObchodu.trim(),
         deal_value: convForm.hodnota,
@@ -443,6 +449,16 @@ export default function LeadDetailPage() {
                   )}
                 </div>
               ))}
+              {(lead.doporucitel_jmeno || lead.doporucitel_prijmeni) && (
+                <div className="flex items-center gap-3">
+                  <span style={{ fontSize: 15, width: 20, textAlign: 'center' }}>👤</span>
+                  <span className="text-xs w-12 flex-shrink-0" style={{ color: 'rgba(237,237,237,0.35)' }}>Doporučil</span>
+                  <span className="text-sm text-white font-semibold">
+                    {[lead.doporucitel_jmeno, lead.doporucitel_prijmeni].filter(Boolean).join(' ')}
+                    {lead.doporucitel_telefon ? ` · ${lead.doporucitel_telefon}` : ''}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <span style={{ fontSize: 15, width: 20, textAlign: 'center' }}>📅</span>
                 <span className="text-xs w-12 flex-shrink-0" style={{ color: 'rgba(237,237,237,0.35)' }}>Přidán</span>

@@ -33,7 +33,9 @@ export async function proxy(request: NextRequest) {
 
   // Unauthenticated user tries to access protected route
   if (!user && !isPublic) {
-    return NextResponse.redirect(new URL('/auth/login', request.url));
+    const loginUrl = new URL('/auth/login', request.url);
+    loginUrl.searchParams.set('next', pathname + request.nextUrl.search);
+    return NextResponse.redirect(loginUrl);
   }
 
   // Authenticated user tries to access auth pages → send to dashboard

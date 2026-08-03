@@ -705,9 +705,9 @@ export default function ReportsPage() {
           {hasCommission && (
             <div className="grid grid-cols-3 gap-4 mb-8">
               {[
-                { label: 'Moje provize tento měsíc', value: commissionThisMonth, sub: MONTH_NAMES_FULL[thisMonth - 1] + ' ' + thisYear },
-                { label: `Moje provize H${thisHalf} ${thisYear}`, value: commissionThisHalf, sub: thisHalf === 1 ? 'Leden – Červen' : 'Červenec – Prosinec' },
-                { label: `Moje provize ${thisYear}`, value: commissionThisYear, sub: 'Celý rok' },
+                { label: 'Moje provize tento měsíc (bez DPH)', value: commissionThisMonth, sub: MONTH_NAMES_FULL[thisMonth - 1] + ' ' + thisYear },
+                { label: `Moje provize H${thisHalf} ${thisYear} (bez DPH)`, value: commissionThisHalf, sub: thisHalf === 1 ? 'Leden – Červen' : 'Červenec – Prosinec' },
+                { label: `Moje provize ${thisYear} (bez DPH)`, value: commissionThisYear, sub: 'Celý rok' },
               ].map((c, i) => (
                 <div key={i} style={{ ...cardStyle, borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.04)' }}>
                   <p className="text-xs font-semibold mb-2" style={{ color: 'rgba(245,158,11,0.6)' }}>{c.label}</p>
@@ -757,7 +757,7 @@ export default function ReportsPage() {
                         <th className="text-left pb-2 font-semibold uppercase tracking-wider">Měsíc</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Cíl</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Skutečnost</th>
-                        {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize</th>}
+                        {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize bez DPH</th>}
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Splnění</th>
                       </tr>
                     </thead>
@@ -825,7 +825,7 @@ export default function ReportsPage() {
                         <th className="text-left pb-2 font-semibold uppercase tracking-wider">Období</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Cíl</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Skutečnost</th>
-                        {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize</th>}
+                        {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize bez DPH</th>}
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Splnění</th>
                       </tr>
                     </thead>
@@ -906,7 +906,7 @@ export default function ReportsPage() {
                         <th className="text-left pb-2 font-semibold uppercase tracking-wider">Rok</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Cíl</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Skutečnost</th>
-                        {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize</th>}
+                        {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize bez DPH</th>}
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Splnění</th>
                       </tr>
                     </thead>
@@ -972,7 +972,7 @@ export default function ReportsPage() {
                 {hasForecastProvize && (
                   <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid rgba(245,158,11,0.15)' }}>
                     <div>
-                      <p className="text-sm font-semibold" style={{ color: '#f59e0b' }}>Výhled provize</p>
+                      <p className="text-sm font-semibold" style={{ color: '#f59e0b' }}>Výhled provize (bez DPH)</p>
                       <p className="text-xs" style={{ color: 'rgba(237,237,237,0.35)' }}>z otevřených zakázek</p>
                     </div>
                     <p className="text-sm font-black" style={{ color: '#f59e0b' }}>{fmtKcFull(forecastProvize)}</p>
@@ -981,7 +981,7 @@ export default function ReportsPage() {
                 {canSeeForecastProvize && !hasForecastProvize && (
                   <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                     <div>
-                      <p className="text-sm font-semibold" style={{ color: 'rgba(245,158,11,0.4)' }}>Výhled provize</p>
+                      <p className="text-sm font-semibold" style={{ color: 'rgba(245,158,11,0.4)' }}>Výhled provize (bez DPH)</p>
                       <p className="text-xs" style={{ color: 'rgba(237,237,237,0.25)' }}>nastav provizi u zakázek</p>
                     </div>
                     <p className="text-sm font-black" style={{ color: 'rgba(245,158,11,0.3)' }}>–</p>
@@ -1066,7 +1066,7 @@ export default function ReportsPage() {
                       <th className="text-left pb-2 font-semibold uppercase tracking-wider">Název</th>
                       <th className="text-left pb-2 font-semibold uppercase tracking-wider">Zákazník</th>
                       <th className="text-right pb-2 font-semibold uppercase tracking-wider">Hodnota</th>
-                      {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize</th>}
+                      {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize bez DPH</th>}
                       <th className="text-right pb-2 font-semibold uppercase tracking-wider">Datum uzavření</th>
                     </tr>
                   </thead>

@@ -591,7 +591,7 @@ export default function DealsPage() {
                     <p className="text-xs mb-1" style={{ color: stage.barva + 'bb' }}>{fmtKc(colTotal)}</p>
                   )}
                   {colProvize > 0 && (
-                    <p className="text-xs mb-2" style={{ color: '#f59e0b' }}>Provize: {fmtKc(colProvize)}</p>
+                    <p className="text-xs mb-2" style={{ color: '#f59e0b' }}>Provize (bez DPH): {fmtKc(colProvize)}</p>
                   )}
 
                   <Droppable droppableId={stage.id}>
@@ -663,7 +663,7 @@ export default function DealsPage() {
                                   )}
                                   {deal.provize_castka != null && deal.provize_castka > 0 && (
                                     <p className="text-xs font-semibold mb-2" style={{ color: '#f59e0b' }}>
-                                      Provize: {deal.provize_castka.toLocaleString('cs-CZ')} Kč
+                                      Provize (bez DPH): {deal.provize_castka.toLocaleString('cs-CZ')} Kč
                                       {deal.provize_procent != null && deal.provize_procent > 0 && (
                                         <span style={{ color: 'rgba(245,158,11,0.6)', fontWeight: 400 }}> ({deal.provize_procent} %)</span>
                                       )}
@@ -795,7 +795,7 @@ export default function DealsPage() {
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5" style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Moje provize
+                  Moje provize (bez DPH)
                   <span style={{ color: 'rgba(237,237,237,0.25)', fontWeight: 400 }}>— volitelné</span>
                 </label>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -828,6 +828,11 @@ export default function DealsPage() {
                     <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(237,237,237,0.35)', fontSize: 12, pointerEvents: 'none' }}>Kč</span>
                   </div>
                 </div>
+                {parseFloat(newDeal.provize_castka) > 0 && (
+                  <p className="text-xs mt-1.5" style={{ color: 'rgba(237,237,237,0.35)' }}>
+                    S DPH (21 %): <span style={{ color: '#f59e0b', fontWeight: 600 }}>{Math.round(parseFloat(newDeal.provize_castka) * (1 + VAT)).toLocaleString('cs-CZ')} Kč</span>
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Datum uzavření</label>
@@ -1065,7 +1070,7 @@ export default function DealsPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold mb-1.5" style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      Moje provize
+                      Moje provize (bez DPH)
                       <span style={{ color: 'rgba(237,237,237,0.25)', fontWeight: 400 }}>— volitelné</span>
                     </label>
                     <div style={{ display: 'flex', gap: 8 }}>
@@ -1098,6 +1103,11 @@ export default function DealsPage() {
                         <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'rgba(237,237,237,0.35)', fontSize: 12, pointerEvents: 'none' }}>Kč</span>
                       </div>
                     </div>
+                    {parseFloat(editForm.provize_castka) > 0 && (
+                      <p className="text-xs mt-1.5" style={{ color: 'rgba(237,237,237,0.35)' }}>
+                        S DPH (21 %): <span style={{ color: '#f59e0b', fontWeight: 600 }}>{Math.round(parseFloat(editForm.provize_castka) * (1 + VAT)).toLocaleString('cs-CZ')} Kč</span>
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-semibold mb-1.5" style={labelStyle}>Fáze pipeline</label>

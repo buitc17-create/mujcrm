@@ -26,7 +26,10 @@ export async function GET(req: Request) {
     customer_email: user.email,
     allow_promotion_codes: true,
     metadata: { userId: user.id, priceId },
-    ...(isBusiness && { subscription_data: { trial_period_days: 7 } }),
+    subscription_data: {
+      metadata: { userId: user.id, priceId },
+      ...(isBusiness && { trial_period_days: 7 }),
+    },
   })
   return NextResponse.redirect(session.url!)
 }
@@ -49,7 +52,10 @@ export async function POST(req: Request) {
     customer_email: user.email,
     allow_promotion_codes: true,
     metadata: { userId: user.id, priceId },
-    ...(isBusiness && { subscription_data: { trial_period_days: 7 } }),
+    subscription_data: {
+      metadata: { userId: user.id, priceId },
+      ...(isBusiness && { trial_period_days: 7 }),
+    },
   })
   return NextResponse.json({ url: session.url })
 }

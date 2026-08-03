@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
-import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
 import Stripe from 'stripe'
@@ -17,6 +16,63 @@ function planFromPriceId(priceId: string): string {
   return 'active';
 }
 
+// Dohledá profil i když primární identifikátor chybí/neshoduje se — subscription_id → customer_id → email.
+async function findProfileId(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adminClient: any,
+  opts: { subscriptionId?: string | null; customerId?: string | null; metaUserId?: string | null }
+): Promise<string | null> {
+  if (opts.subscriptionId) {
+    const { data } = await adminClient.from('profiles').select('id').eq('stripe_subscription_id', opts.subscriptionId).maybeSingle()
+    if (data) return data.id
+  }
+  if (opts.customerId) {
+    const { data } = await adminClient.from('profiles').select('id').eq('stripe_customer_id', opts.customerId).maybeSingle()
+    if (data) return data.id
+  }
+  if (opts.metaUserId) {
+    const { data } = await adminClient.from('profiles').select('id').eq('id', opts.metaUserId).maybeSingle()
+    if (data) return data.id
+  }
+  if (opts.customerId) {
+    try {
+      const customer = await stripe.customers.retrieve(opts.customerId)
+      const email = !('deleted' in customer && customer.deleted) ? (customer as Stripe.Customer).email : null
+      if (email) {
+        const { data: authList } = await adminClient.auth.admin.listUsers({ perPage: 1000 })
+        const match = authList?.users.find((u: { id: string; email?: string }) => u.email?.toLowerCase() === email.toLowerCase())
+        if (match) return match.id
+      }
+    } catch { /* zákazník smazán nebo nedostupný — ignoruj */ }
+  }
+  return null
+}
+
+// Upozorní na e-mail, když se ani přes fallbacky nepodaří dohledat uživatele — ať to nezůstane tiché.
+async function notifyDesync(context: string, info: Record<string, unknown>) {
+  const systemSmtpUser = process.env.SYSTEM_SMTP_USER
+  const systemSmtpPass = process.env.SYSTEM_SMTP_PASS
+  const systemSmtpFrom = process.env.SYSTEM_SMTP_FROM ?? systemSmtpUser
+  if (!systemSmtpUser || !systemSmtpPass) return
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SYSTEM_SMTP_HOST ?? 'smtp.gmail.com',
+      port: Number(process.env.SYSTEM_SMTP_PORT ?? 465),
+      secure: process.env.SYSTEM_SMTP_SECURE !== 'false',
+      auth: { user: systemSmtpUser, pass: systemSmtpPass },
+    })
+    await transporter.sendMail({
+      from: `"MujCRM Systém" <${systemSmtpFrom}>`,
+      to: 'info@mujcrm.cz',
+      subject: `⚠️ Stripe webhook: nenalezen uživatel (${context})`,
+      html: `<div style="font-family:sans-serif;font-size:14px;color:#111">
+        <p><strong>Nepodařilo se dohledat uživatele</strong> pro událost <code>${context}</code>. Zkontroluj ručně v Supabase / Stripe.</p>
+        <pre style="background:#f3f4f6;padding:12px;border-radius:8px">${JSON.stringify(info, null, 2)}</pre>
+      </div>`,
+    })
+  } catch { /* neblokuj webhook */ }
+}
+
 export async function POST(req: Request) {
   const body = await req.text()
   const sig = req.headers.get('stripe-signature')!
@@ -28,7 +84,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  const supabase = await createClient()
   const adminClient = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -39,12 +94,20 @@ export async function POST(req: Request) {
       const session = event.data.object as Stripe.Checkout.Session
       const priceId = session.metadata?.priceId ?? ''
       const planName = planFromPriceId(priceId)
-      await supabase.from('profiles').update({
+      const userId = session.metadata?.userId
+
+      const { data: updatedProfile } = await adminClient.from('profiles').update({
         stripe_customer_id: session.customer as string,
         stripe_subscription_id: session.subscription as string,
         plan: planName,
         trial_ends_at: null,
-      }).eq('id', session.metadata!.userId)
+      }).eq('id', userId ?? '').select('id').maybeSingle()
+
+      if (!updatedProfile) {
+        await notifyDesync('checkout.session.completed', {
+          sessionId: session.id, userId, customer: session.customer, subscription: session.subscription,
+        })
+      }
 
       // Interní notifikace o novém předplatném
       try {
@@ -113,11 +176,18 @@ export async function POST(req: Request) {
     }
     case 'customer.subscription.deleted': {
       const sub = event.data.object as Stripe.Subscription
-      await supabase.from('profiles').update({
-        plan: 'free',
-        pending_plan: null,
-        pending_plan_date: null,
-      }).eq('stripe_subscription_id', sub.id)
+      const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
+      const profileId = await findProfileId(adminClient, { subscriptionId: sub.id, customerId, metaUserId: sub.metadata?.userId })
+
+      if (profileId) {
+        await adminClient.from('profiles').update({
+          plan: 'free',
+          pending_plan: null,
+          pending_plan_date: null,
+        }).eq('id', profileId)
+      } else {
+        await notifyDesync('customer.subscription.deleted', { subscriptionId: sub.id, customerId })
+      }
       break
     }
     case 'customer.subscription.updated': {
@@ -134,12 +204,21 @@ export async function POST(req: Request) {
       const newPlan = planFromPriceId(priceId)
       if (newPlan === 'active') break // neznámý plán, ignoruj
 
-      // Nový plán je aktivní — smaž pending
-      await supabase.from('profiles').update({
-        plan: newPlan,
-        pending_plan: null,
-        pending_plan_date: null,
-      }).eq('stripe_subscription_id', sub.id)
+      const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
+      const profileId = await findProfileId(adminClient, { subscriptionId: sub.id, customerId, metaUserId: sub.metadata?.userId })
+
+      if (profileId) {
+        // Nový plán je aktivní — dopiš i stripe_customer_id/subscription_id (samoopravné, kdyby chyběly) a smaž pending
+        await adminClient.from('profiles').update({
+          plan: newPlan,
+          stripe_customer_id: customerId,
+          stripe_subscription_id: sub.id,
+          pending_plan: null,
+          pending_plan_date: null,
+        }).eq('id', profileId)
+      } else {
+        await notifyDesync('customer.subscription.updated', { subscriptionId: sub.id, customerId, newPlan })
+      }
       break
     }
     case 'invoice.payment_succeeded': {

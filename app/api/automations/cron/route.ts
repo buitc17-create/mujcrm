@@ -370,7 +370,7 @@ export async function GET(request: Request) {
         // Všechny zakázky přiřazené členovi
         const { data: allDeals } = await supabase
           .from('deals')
-          .select('id, nazev, hodnota, stage_id, datum_uzavreni, pravdepodobnost, contacts(jmeno, prijmeni, firma)')
+          .select('id, nazev, hodnota, provize_castka, stage_id, datum_uzavreni, pravdepodobnost, contacts(jmeno, prijmeni, firma)')
           .eq('user_id', tm.owner_id)
           .eq('assigned_to', tm.member_user_id);
 
@@ -393,8 +393,15 @@ export async function GET(request: Request) {
         const lostDeals = deals.filter(d => lostStageIds.includes(d.stage_id));
         const activeDeals = deals.filter(d => !wonStageIds.includes(d.stage_id) && !lostStageIds.includes(d.stage_id));
 
-        const wonValue  = wonDeals.reduce((s, d) => s + (d.hodnota ?? 0), 0);
+        const wonValue   = wonDeals.reduce((s, d) => s + (d.hodnota ?? 0), 0);
+        const wonProvize = wonDeals.reduce((s, d) => s + ((d as Record<string, unknown>).provize_castka as number ?? 0), 0);
         const totalValue = activeDeals.reduce((s, d) => s + (d.hodnota ?? 0), 0);
+
+        const { data: ownerProfile } = await supabase.from('profiles').select('plan').eq('id', tm.owner_id).maybeSingle();
+        const canForecast = ['tym', 'business', 'enterprise'].includes(ownerProfile?.plan ?? 'free');
+        const forecastProvize = canForecast
+          ? activeDeals.reduce((s, d) => s + ((d as Record<string, unknown>).provize_castka as number ?? 0), 0)
+          : undefined;
 
         // Počty per stage pro graf
         const stageCounts: Record<string, number> = {};
@@ -409,10 +416,11 @@ export async function GET(request: Request) {
           periodEnd: prevMonthEnd,
           stages: stages ?? [],
           deals, wonDeals, lostDeals, activeDeals,
-          wonValue, totalValue,
+          wonValue, wonProvize, totalValue,
           newThisMonthCount: newThisMonth?.length ?? 0,
           stageCounts, maxCount,
           stageMap,
+          forecastProvize,
         });
 
         const transporter = nodemailer.createTransport({

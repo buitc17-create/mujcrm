@@ -105,20 +105,38 @@ export default async function DashboardPage() {
       ? supabase.from('deals').select('hodnota, stage_id, assigned_to').eq('user_id', ownerId).eq('assigned_to', user.id)
       : supabase.from('deals').select('hodnota, stage_id, assigned_to').eq('user_id', user.id),
     supabase.from('pipeline_stages').select('id, nazev').eq('user_id', ownerId),
-    supabase.from('tasks')
-      .select('id, nazev, deadline, priorita, dokonceno')
-      .eq('user_id', user.id)
-      .eq('dokonceno', false)
-      .gte('deadline', today)
-      .lt('deadline', tomorrowStr)
-      .order('deadline'),
-    supabase.from('tasks')
-      .select('id, nazev, deadline, priorita, dokonceno')
-      .eq('user_id', user.id)
-      .eq('dokonceno', false)
-      .lt('deadline', today)
-      .order('deadline', { ascending: false })
-      .limit(5),
+    isMember
+      ? supabase.from('tasks')
+          .select('id, nazev, deadline, priorita, dokonceno')
+          .eq('user_id', ownerId)
+          .eq('assigned_to', user.id)
+          .eq('dokonceno', false)
+          .gte('deadline', today)
+          .lt('deadline', tomorrowStr)
+          .order('deadline')
+      : supabase.from('tasks')
+          .select('id, nazev, deadline, priorita, dokonceno')
+          .eq('user_id', user.id)
+          .eq('dokonceno', false)
+          .gte('deadline', today)
+          .lt('deadline', tomorrowStr)
+          .order('deadline'),
+    isMember
+      ? supabase.from('tasks')
+          .select('id, nazev, deadline, priorita, dokonceno')
+          .eq('user_id', ownerId)
+          .eq('assigned_to', user.id)
+          .eq('dokonceno', false)
+          .lt('deadline', today)
+          .order('deadline', { ascending: false })
+          .limit(5)
+      : supabase.from('tasks')
+          .select('id, nazev, deadline, priorita, dokonceno')
+          .eq('user_id', user.id)
+          .eq('dokonceno', false)
+          .lt('deadline', today)
+          .order('deadline', { ascending: false })
+          .limit(5),
     supabase.from('activities')
       .select('id, typ, popis, datum, cas_od, cas_do, misto, contacts(jmeno, prijmeni)')
       .eq('user_id', user.id)
@@ -126,7 +144,7 @@ export default async function DashboardPage() {
       .lt('datum', tomorrowStr)
       .order('datum'),
     supabase.from('calendar_events')
-      .select('id, nazev, typ, datum, cas_od, cas_do, popis, contacts(jmeno, prijmeni), deals(nazev)')
+      .select('id, nazev, typ, datum, cas_od, cas_do, popis, task_id, contacts(jmeno, prijmeni), deals(nazev)')
       .eq('user_id', user.id)
       .eq('datum', today)
       .order('cas_od'),
@@ -174,6 +192,7 @@ export default async function DashboardPage() {
   const todayCalendarList = (todayCalendarRes.data ?? []) as unknown as Array<{
     id: string; nazev: string; typ: string; datum: string;
     cas_od: string | null; cas_do: string | null; popis: string | null;
+    task_id: string | null;
     contacts: { jmeno: string; prijmeni: string | null } | null;
     deals: { nazev: string } | null;
   }>;
@@ -242,7 +261,7 @@ export default async function DashboardPage() {
       icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
       href: '/dashboard/team',
     }] : []),
-    { label: 'Úkoly dnes', value: todayTasksList.length.toString(), hint: 'ke splnění dnes', accent: '#f59e0b',
+    { label: 'Úkoly dnes', value: (todayTasksList.length + todayCalendarList.filter(e => e.typ === 'deadline' && !e.task_id).length).toString(), hint: 'ke splnění dnes', accent: '#f59e0b',
       icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
       href: '/dashboard/tasks' },
   ];
@@ -308,7 +327,7 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {todayTasksList.length === 0 && todayActivitiesList.length === 0 && todayCalendarList.length === 0 ? (
+          {todayTasksList.length === 0 && todayActivitiesList.length === 0 && todayCalendarList.filter(e => !e.task_id).length === 0 ? (
             <div className="px-5 py-10 text-center">
               <p className="text-sm" style={{ color: 'rgba(237,237,237,0.35)' }}>Na dnes nic naplánováno.</p>
               <div className="flex items-center justify-center gap-4 mt-3">
@@ -373,8 +392,8 @@ export default async function DashboardPage() {
                 );
               })}
 
-              {/* Calendar events today */}
-              {todayCalendarList.map((ev) => {
+              {/* Calendar events today (exclude events linked to tasks — those already show above) */}
+              {todayCalendarList.filter(ev => !ev.task_id).map((ev) => {
                 const calMeta = TYPES.find(t => t.id === ev.typ) ?? { label: ev.typ, color: '#00BFFF' };
                 const contact = ev.contacts ? `${ev.contacts.jmeno}${ev.contacts.prijmeni ? ' ' + ev.contacts.prijmeni : ''}` : null;
                 const timeStr = ev.cas_od ? (ev.cas_do ? `${ev.cas_od} – ${ev.cas_do}` : ev.cas_od) : null;

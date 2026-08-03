@@ -106,7 +106,7 @@ export default function CookieConsent() {
     const consent = getCookieConsent();
     if (!consent) {
       // Krátká prodleva – nechceme banner okamžitě při SSR hydrataci
-      const timer = setTimeout(() => setVisible(true), 600);
+      const timer = setTimeout(() => setVisible(true), 2000);
       return () => clearTimeout(timer);
     }
     // Načti uložené preference do stavu (pro případ otevření nastavení)

@@ -312,55 +312,35 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Logo je příliš velké (max 2 MB).', '#ef4444');
-      return;
-    }
-
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png';
-    if (!['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(ext)) {
-      showToast('Podporované formáty: PNG, JPG, WEBP, SVG.', '#ef4444');
-      return;
-    }
-
     setLogoUploading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLogoUploading(false); return; }
 
-    const path = `${user.id}/logo.${ext}`;
-    const { error: uploadError } = await supabase.storage
-      .from('logos')
-      .upload(path, file, { upsert: true, contentType: file.type });
+    const fd = new FormData();
+    fd.append('file', file);
 
-    if (uploadError) {
-      showToast('Chyba při nahrávání loga: ' + uploadError.message, '#ef4444');
+    const res = await fetch('/api/settings/upload-logo', { method: 'POST', body: fd });
+    const json = await res.json();
+
+    if (!res.ok) {
+      showToast(json.error ?? 'Chyba při nahrávání loga.', '#ef4444');
       setLogoUploading(false);
+      // Reset input so same file can be re-selected
+      if (logoInputRef.current) logoInputRef.current.value = '';
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(path);
-    const logoWithCache = publicUrl + '?t=' + Date.now();
-
-    setCompany(c => ({ ...c, logo_url: logoWithCache }));
-
-    // Immediately save logo_url
-    await supabase.from('company_settings').upsert(
-      { user_id: user.id, logo_url: logoWithCache, updated_at: new Date().toISOString() },
-      { onConflict: 'user_id' }
-    );
-
+    setCompany(c => ({ ...c, logo_url: json.logoUrl }));
     setLogoUploading(false);
     showToast('Logo bylo nahráno.', '#22C55E');
+    if (logoInputRef.current) logoInputRef.current.value = '';
   };
 
   const removeLogo = async () => {
     setCompany(c => ({ ...c, logo_url: '' }));
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from('company_settings').upsert(
-      { user_id: user.id, logo_url: null, updated_at: new Date().toISOString() },
-      { onConflict: 'user_id' }
-    );
+    const res = await fetch('/api/settings/upload-logo', { method: 'DELETE' });
+    if (!res.ok) {
+      showToast('Chyba při odstraňování loga.', '#ef4444');
+      return;
+    }
     showToast('Logo bylo odstraněno.', '#f59e0b');
   };
 

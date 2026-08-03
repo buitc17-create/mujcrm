@@ -15,6 +15,7 @@ type Deal = {
   id: string;
   nazev: string;
   hodnota: number;
+  provize_castka: number | null;
   pravdepodobnost: number;
   stage_id: string | null;
   datum_uzavreni: string | null;
@@ -204,11 +205,13 @@ export default function ReportsPage() {
   const [loadingMember, setLoadingMember] = useState(false);
   const [goalDrafts, setGoalDrafts] = useState<Record<string, string>>({});
   const [exporting, setExporting] = useState<string | null>(null);
+  const [plan, setPlan] = useState<string>('free');
 
   const load = useCallback(async () => {
     // Zjisti zda je přihlášený uživatel člen (ne admin)
     const membershipRes = await fetch('/api/team/my-membership');
-    const { isMember } = await membershipRes.json();
+    const { isMember, plan: memberPlan } = await membershipRes.json();
+    setPlan(memberPlan ?? 'free');
 
     if (isMember) {
       // Člen: načti kombinovaná data (vlastní + přiřazená adminem) přes server endpoint
@@ -226,7 +229,7 @@ export default function ReportsPage() {
       // Admin: standardní load vlastních dat
       const [{ data: stagesData }, { data: dealsData }, { data: goalsData }, { data: leadsData }, { data: activitiesData }] = await Promise.all([
         supabase.from('pipeline_stages').select('id, nazev, barva').order('poradi'),
-        supabase.from('deals').select('id, nazev, hodnota, pravdepodobnost, stage_id, datum_uzavreni, contacts(jmeno, prijmeni)').is('assigned_to', null),
+        supabase.from('deals').select('id, nazev, hodnota, provize_castka, pravdepodobnost, stage_id, datum_uzavreni, contacts(jmeno, prijmeni)').is('assigned_to', null),
         supabase.from('revenue_goals').select('id, rok, typ, obdobi, cil_castka').order('rok').order('obdobi'),
         supabase.from('leads').select('id, zdroj, konvertovan, lead_status_id, created_at'),
         supabase.from('activities').select('id, typ, datum').order('datum', { ascending: false }),
@@ -299,6 +302,17 @@ export default function ReportsPage() {
     return map;
   }, [wonDeals]);
 
+  const commissionByMonth = useMemo(() => {
+    const map: Record<string, number> = {};
+    wonDeals.forEach(d => {
+      if (!d.provize_castka) return;
+      const dt = d.datum_uzavreni ? new Date(d.datum_uzavreni) : new Date();
+      const key = `${dt.getFullYear()}-${dt.getMonth() + 1}`;
+      map[key] = (map[key] ?? 0) + d.provize_castka;
+    });
+    return map;
+  }, [wonDeals]);
+
   function getRevenue(rok: number, mesic: number) {
     return revenueByMonth[`${rok}-${mesic}`] ?? 0;
   }
@@ -310,9 +324,25 @@ export default function ReportsPage() {
     return Array.from({ length: 12 }, (_, i) => getRevenue(rok, i + 1)).reduce((a, b) => a + b, 0);
   }
 
+  function getCommission(rok: number, mesic: number) {
+    return commissionByMonth[`${rok}-${mesic}`] ?? 0;
+  }
+  function getCommissionHalf(rok: number, half: number) {
+    const months = half === 1 ? [1,2,3,4,5,6] : [7,8,9,10,11,12];
+    return months.reduce((s, m) => s + getCommission(rok, m), 0);
+  }
+  function getCommissionYear(rok: number) {
+    return Array.from({ length: 12 }, (_, i) => getCommission(rok, i + 1)).reduce((a, b) => a + b, 0);
+  }
+
   const revenueThisMonth = getRevenue(thisYear, thisMonth);
   const revenueThisHalf = getRevenueHalf(thisYear, thisHalf);
   const revenueThisYear = getRevenueYear(thisYear);
+  const commissionThisMonth = getCommission(thisYear, thisMonth);
+  const commissionThisHalf = getCommissionHalf(thisYear, thisHalf);
+  const commissionThisYear = getCommissionYear(thisYear);
+  const hasCommission = wonDeals.some(d => d.provize_castka && d.provize_castka > 0);
+  const canSeeForecastProvize = ['tym', 'business', 'enterprise'].includes(plan);
   const decidedDeals = wonDeals.length + lostDeals.length;
   const winRate = decidedDeals > 0 ? Math.round((wonDeals.length / decidedDeals) * 100) : 0;
 
@@ -361,22 +391,27 @@ export default function ReportsPage() {
       const y = d.getFullYear();
       const actual = getRevenue(y, m);
       const goal = getGoal('mesicni', y, m);
-      return { label: `${MONTH_NAMES[m - 1]} ${y !== thisYear ? "'" + String(y).slice(2) : ''}`.trim(), m, y, actual, goal };
+      const commission = commissionByMonth[`${y}-${m}`] ?? 0;
+      return { label: `${MONTH_NAMES[m - 1]} ${y !== thisYear ? "'" + String(y).slice(2) : ''}`.trim(), m, y, actual, goal, commission };
     });
-  }, [goals, revenueByMonth, thisYear, thisMonth]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goals, revenueByMonth, commissionByMonth, thisYear, thisMonth]);
 
   const halfData = useMemo(() => [
-    { label: `H1 ${thisYear - 1}`, actual: getRevenueHalf(thisYear - 1, 1), goal: getGoal('pololetni', thisYear - 1, 1) },
-    { label: `H2 ${thisYear - 1}`, actual: getRevenueHalf(thisYear - 1, 2), goal: getGoal('pololetni', thisYear - 1, 2) },
-    { label: `H1 ${thisYear}`, actual: getRevenueHalf(thisYear, 1), goal: getGoal('pololetni', thisYear, 1) },
-    { label: `H2 ${thisYear}`, actual: getRevenueHalf(thisYear, 2), goal: getGoal('pololetni', thisYear, 2) },
-  ], [goals, revenueByMonth, thisYear]);
+    { label: `H1 ${thisYear - 1}`, actual: getRevenueHalf(thisYear - 1, 1), goal: getGoal('pololetni', thisYear - 1, 1), commission: getCommissionHalf(thisYear - 1, 1) },
+    { label: `H2 ${thisYear - 1}`, actual: getRevenueHalf(thisYear - 1, 2), goal: getGoal('pololetni', thisYear - 1, 2), commission: getCommissionHalf(thisYear - 1, 2) },
+    { label: `H1 ${thisYear}`, actual: getRevenueHalf(thisYear, 1), goal: getGoal('pololetni', thisYear, 1), commission: getCommissionHalf(thisYear, 1) },
+    { label: `H2 ${thisYear}`, actual: getRevenueHalf(thisYear, 2), goal: getGoal('pololetni', thisYear, 2), commission: getCommissionHalf(thisYear, 2) },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [goals, revenueByMonth, commissionByMonth, thisYear]);
 
   const yearlyRows = useMemo(() => [thisYear - 2, thisYear - 1, thisYear].map(y => ({
     rok: y,
     actual: getRevenueYear(y),
     goal: getGoal('rocni', y, y),
-  })), [goals, revenueByMonth, thisYear]);
+    commission: getCommissionYear(y),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  })), [goals, revenueByMonth, commissionByMonth, thisYear]);
 
   const yearGoal = getGoal('rocni', thisYear, thisYear);
   const yearActual = getRevenueYear(thisYear);
@@ -387,6 +422,8 @@ export default function ReportsPage() {
 
   // Otevřené zakázky = vše kromě vyhráno a prohráno
   const openDeals = activeDeals.filter(d => !wonStageIds.has(d.stage_id ?? '') && !lostStageIds.has(d.stage_id ?? ''));
+  const forecastProvize = openDeals.reduce((s, d) => s + (d.provize_castka ?? 0), 0);
+  const hasForecastProvize = canSeeForecastProvize && openDeals.some(d => d.provize_castka && d.provize_castka > 0);
   const openTotal = openDeals.reduce((s, d) => s + d.hodnota, 0);
   const weightedTotal = openDeals.reduce((s, d) => s + d.hodnota * (d.pravdepodobnost ?? 50) / 100, 0);
   const closingThisMonth = openDeals.filter(d => {
@@ -647,7 +684,7 @@ export default function ReportsPage() {
       {section === 'prijmy' && (
         <div id="report-section-content">
           {/* Overview cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {[
               { label: 'Příjmy tento měsíc', value: revenueThisMonth, sub: MONTH_NAMES_FULL[thisMonth - 1] + ' ' + thisYear, color: '#00BFFF' },
               { label: `Příjmy H${thisHalf} ${thisYear}`, value: revenueThisHalf, sub: thisHalf === 1 ? 'Leden – Červen' : 'Červenec – Prosinec', color: '#7B2FFF' },
@@ -665,6 +702,22 @@ export default function ReportsPage() {
               </div>
             ))}
           </div>
+          {hasCommission && (
+            <div className="grid grid-cols-3 gap-4 mb-8">
+              {[
+                { label: 'Moje provize tento měsíc', value: commissionThisMonth, sub: MONTH_NAMES_FULL[thisMonth - 1] + ' ' + thisYear },
+                { label: `Moje provize H${thisHalf} ${thisYear}`, value: commissionThisHalf, sub: thisHalf === 1 ? 'Leden – Červen' : 'Červenec – Prosinec' },
+                { label: `Moje provize ${thisYear}`, value: commissionThisYear, sub: 'Celý rok' },
+              ].map((c, i) => (
+                <div key={i} style={{ ...cardStyle, borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.04)' }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: 'rgba(245,158,11,0.6)' }}>{c.label}</p>
+                  <p className="text-xl font-black" style={{ color: '#f59e0b' }}>{fmtKc(c.value)}</p>
+                  <p className="text-xs mt-1" style={{ color: 'rgba(237,237,237,0.3)' }}>{c.sub}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {!hasCommission && <div className="mb-8" />}
 
           {/* Goals tabs */}
           <div style={{ ...cardStyle, marginBottom: 24 }}>
@@ -704,6 +757,7 @@ export default function ReportsPage() {
                         <th className="text-left pb-2 font-semibold uppercase tracking-wider">Měsíc</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Cíl</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Skutečnost</th>
+                        {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize</th>}
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Splnění</th>
                       </tr>
                     </thead>
@@ -725,6 +779,11 @@ export default function ReportsPage() {
                               />
                             </td>
                             <td className="py-2.5 text-right font-semibold" style={{ color: '#ededed' }}>{fmtKcFull(row.actual)}</td>
+                            {hasCommission && (
+                              <td className="py-2.5 text-right font-semibold" style={{ color: row.commission > 0 ? '#f59e0b' : 'rgba(237,237,237,0.2)' }}>
+                                {row.commission > 0 ? fmtKcFull(row.commission) : '–'}
+                              </td>
+                            )}
                             <td className="py-2.5 text-right">
                               {pct !== null ? (
                                 <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: pctColor(pct) + '20', color: pctColor(pct) }}>
@@ -766,34 +825,34 @@ export default function ReportsPage() {
                         <th className="text-left pb-2 font-semibold uppercase tracking-wider">Období</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Cíl</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Skutečnost</th>
+                        {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize</th>}
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Splnění</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {[
-                        { label: `H1 ${thisYear - 1}`, rok: thisYear - 1, half: 1 },
-                        { label: `H2 ${thisYear - 1}`, rok: thisYear - 1, half: 2 },
-                        { label: `H1 ${thisYear}`, rok: thisYear, half: 1 },
-                        { label: `H2 ${thisYear}`, rok: thisYear, half: 2 },
-                      ].map((row, i) => {
-                        const actual = getRevenueHalf(row.rok, row.half);
-                        const goal = getGoal('pololetni', row.rok, row.half);
-                        const pct = goal > 0 ? Math.round((actual / goal) * 100) : null;
-                        const isCurrent = row.rok === thisYear && row.half === thisHalf;
+                      {halfData.map((row, i) => {
+                        const goal = getGoal('pololetni', i < 2 ? thisYear - 1 : thisYear, i % 2 === 0 ? 1 : 2);
+                        const pct = goal > 0 ? Math.round((row.actual / goal) * 100) : null;
+                        const isCurrent = row.label === `H${thisHalf} ${thisYear}`;
                         return (
                           <tr key={i} style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: isCurrent ? 'rgba(0,191,255,0.04)' : 'transparent' }}>
                             <td className="py-2.5 font-semibold" style={{ color: isCurrent ? '#00BFFF' : '#ededed' }}>{row.label}</td>
                             <td className="py-2.5 text-right">
                               <input
                                 type="number"
-                                value={getDraft('pololetni', row.rok, row.half)}
-                                onChange={e => setDraft('pololetni', row.rok, row.half, e.target.value)}
-                                onBlur={() => saveGoal('pololetni', row.rok, row.half)}
+                                value={getDraft('pololetni', i < 2 ? thisYear - 1 : thisYear, i % 2 === 0 ? 1 : 2)}
+                                onChange={e => setDraft('pololetni', i < 2 ? thisYear - 1 : thisYear, i % 2 === 0 ? 1 : 2, e.target.value)}
+                                onBlur={() => saveGoal('pololetni', i < 2 ? thisYear - 1 : thisYear, i % 2 === 0 ? 1 : 2)}
                                 style={{ ...inputStyle, color: 'rgba(237,237,237,0.6)', width: 120 }}
                                 placeholder="— nastavit —"
                               />
                             </td>
-                            <td className="py-2.5 text-right font-semibold" style={{ color: '#ededed' }}>{fmtKcFull(actual)}</td>
+                            <td className="py-2.5 text-right font-semibold" style={{ color: '#ededed' }}>{fmtKcFull(row.actual)}</td>
+                            {hasCommission && (
+                              <td className="py-2.5 text-right font-semibold" style={{ color: row.commission > 0 ? '#f59e0b' : 'rgba(237,237,237,0.2)' }}>
+                                {row.commission > 0 ? fmtKcFull(row.commission) : '–'}
+                              </td>
+                            )}
                             <td className="py-2.5 text-right">
                               {pct !== null ? (
                                 <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: pctColor(pct) + '20', color: pctColor(pct) }}>
@@ -847,6 +906,7 @@ export default function ReportsPage() {
                         <th className="text-left pb-2 font-semibold uppercase tracking-wider">Rok</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Cíl</th>
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Skutečnost</th>
+                        {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize</th>}
                         <th className="text-right pb-2 font-semibold uppercase tracking-wider">Splnění</th>
                       </tr>
                     </thead>
@@ -868,6 +928,11 @@ export default function ReportsPage() {
                               />
                             </td>
                             <td className="py-2.5 text-right font-semibold" style={{ color: '#ededed' }}>{fmtKcFull(row.actual)}</td>
+                            {hasCommission && (
+                              <td className="py-2.5 text-right font-semibold" style={{ color: row.commission > 0 ? '#f59e0b' : 'rgba(237,237,237,0.2)' }}>
+                                {row.commission > 0 ? fmtKcFull(row.commission) : '–'}
+                              </td>
+                            )}
                             <td className="py-2.5 text-right">
                               {pct !== null ? (
                                 <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: pctColor(pct) + '20', color: pctColor(pct) }}>
@@ -904,6 +969,24 @@ export default function ReportsPage() {
                     <p className="text-sm font-black" style={{ color: item.color }}>{item.value}</p>
                   </div>
                 ))}
+                {hasForecastProvize && (
+                  <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid rgba(245,158,11,0.15)' }}>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: '#f59e0b' }}>Výhled provize</p>
+                      <p className="text-xs" style={{ color: 'rgba(237,237,237,0.35)' }}>z otevřených zakázek</p>
+                    </div>
+                    <p className="text-sm font-black" style={{ color: '#f59e0b' }}>{fmtKcFull(forecastProvize)}</p>
+                  </div>
+                )}
+                {canSeeForecastProvize && !hasForecastProvize && (
+                  <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: 'rgba(245,158,11,0.4)' }}>Výhled provize</p>
+                      <p className="text-xs" style={{ color: 'rgba(237,237,237,0.25)' }}>nastav provizi u zakázek</p>
+                    </div>
+                    <p className="text-sm font-black" style={{ color: 'rgba(245,158,11,0.3)' }}>–</p>
+                  </div>
+                )}
               </div>
               <div>
                 <div className="flex justify-between text-xs mb-1.5" style={{ color: 'rgba(237,237,237,0.4)' }}>
@@ -983,6 +1066,7 @@ export default function ReportsPage() {
                       <th className="text-left pb-2 font-semibold uppercase tracking-wider">Název</th>
                       <th className="text-left pb-2 font-semibold uppercase tracking-wider">Zákazník</th>
                       <th className="text-right pb-2 font-semibold uppercase tracking-wider">Hodnota</th>
+                      {hasCommission && <th className="text-right pb-2 font-semibold uppercase tracking-wider" style={{ color: 'rgba(245,158,11,0.6)' }}>Provize</th>}
                       <th className="text-right pb-2 font-semibold uppercase tracking-wider">Datum uzavření</th>
                     </tr>
                   </thead>
@@ -997,6 +1081,11 @@ export default function ReportsPage() {
                             {c ? `${c.jmeno}${c.prijmeni ? ' ' + c.prijmeni : ''}` : '–'}
                           </td>
                           <td className="py-2.5 text-right font-black" style={{ color: '#22C55E' }}>{fmtKcFull(d.hodnota)}</td>
+                          {hasCommission && (
+                            <td className="py-2.5 text-right font-semibold" style={{ color: d.provize_castka && d.provize_castka > 0 ? '#f59e0b' : 'rgba(237,237,237,0.2)' }}>
+                              {d.provize_castka && d.provize_castka > 0 ? fmtKcFull(d.provize_castka) : '–'}
+                            </td>
+                          )}
                           <td className="py-2.5 text-right" style={{ color: 'rgba(237,237,237,0.45)' }}>
                             {d.datum_uzavreni ? new Date(d.datum_uzavreni).toLocaleDateString('cs-CZ') : '–'}
                           </td>

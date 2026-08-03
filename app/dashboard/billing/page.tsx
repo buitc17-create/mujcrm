@@ -130,7 +130,7 @@ export default function BillingPage() {
             <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
           </svg>
           <span className="text-sm" style={{ color: 'rgba(34,197,94,0.9)' }}>
-            Využíváte <strong>7denní zkušební období Business plánu</strong> — zkušební doba končí <strong>{formatDate(trialEnd)}</strong>.
+            Využíváte <strong>7denní zkušební období</strong> — zkušební doba končí <strong>{formatDate(trialEnd)}</strong>.
           </span>
         </div>
       )}

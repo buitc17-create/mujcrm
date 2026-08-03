@@ -25,5 +25,10 @@ export async function GET() {
     .limit(1)
     .single();
 
-  return NextResponse.json({ isMember: !!tm });
+  if (tm) {
+    const { data: ownerProfile } = await admin.from('profiles').select('plan').eq('id', tm.owner_id).maybeSingle();
+    return NextResponse.json({ isMember: true, plan: ownerProfile?.plan ?? 'free' });
+  }
+  const { data: ownProfile } = await admin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
+  return NextResponse.json({ isMember: false, plan: ownProfile?.plan ?? 'free' });
 }

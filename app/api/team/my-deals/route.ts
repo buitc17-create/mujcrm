@@ -32,12 +32,12 @@ export async function GET() {
   const [{ data: ownDeals }, { data: assignedDeals }, { data: ownLeads }, { data: ownActivities }] = await Promise.all([
     admin
       .from('deals')
-      .select('id, nazev, hodnota, pravdepodobnost, stage_id, datum_uzavreni, contacts(jmeno, prijmeni)')
+      .select('id, nazev, hodnota, provize_castka, pravdepodobnost, stage_id, datum_uzavreni, contacts(jmeno, prijmeni)')
       .eq('user_id', user.id),
     ownerId
       ? admin
           .from('deals')
-          .select('id, nazev, hodnota, pravdepodobnost, stage_id, datum_uzavreni, contacts(jmeno, prijmeni)')
+          .select('id, nazev, hodnota, provize_castka, pravdepodobnost, stage_id, datum_uzavreni, contacts(jmeno, prijmeni)')
           .eq('user_id', ownerId)
           .eq('assigned_to', user.id)
       : Promise.resolve({ data: [] }),

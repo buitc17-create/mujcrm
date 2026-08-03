@@ -43,8 +43,8 @@ export async function GET(request: Request) {
 
   // Načti data daného člena — vlastní zakázky + zakázky přiřazené adminem
   const [{ data: ownDeals }, { data: assignedDeals }, { data: tasks }, { data: leads }, { data: activities }] = await Promise.all([
-    adminClient.from('deals').select('id, nazev, hodnota, pravdepodobnost, stage_id, datum_uzavreni, contacts(jmeno, prijmeni)').eq('user_id', memberId),
-    adminClient.from('deals').select('id, nazev, hodnota, pravdepodobnost, stage_id, datum_uzavreni, contacts(jmeno, prijmeni)').eq('user_id', ownerId).eq('assigned_to', memberId),
+    adminClient.from('deals').select('id, nazev, hodnota, provize_castka, pravdepodobnost, stage_id, datum_uzavreni, contacts(jmeno, prijmeni)').eq('user_id', memberId),
+    adminClient.from('deals').select('id, nazev, hodnota, provize_castka, pravdepodobnost, stage_id, datum_uzavreni, contacts(jmeno, prijmeni)').eq('user_id', ownerId).eq('assigned_to', memberId),
     adminClient.from('tasks').select('id, dokonceno').eq('user_id', memberId),
     adminClient.from('leads').select('id, zdroj, konvertovan, lead_status_id, created_at').eq('user_id', memberId),
     adminClient.from('activities').select('id, typ, datum').eq('user_id', memberId),

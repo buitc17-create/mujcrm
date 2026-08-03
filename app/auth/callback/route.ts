@@ -70,6 +70,22 @@ export async function GET(request: NextRequest) {
           new URL('/auth/update-password?invited=true', requestUrl.origin)
         )
       }
+
+      // Potvrzení emailu nového uživatele (type === 'signup' nebo 'email')
+      const { data: { user: newUser } } = await supabase.auth.getUser()
+      if (newUser) {
+        const adminClient = createAdminClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+        const trialEnds = new Date()
+        trialEnds.setDate(trialEnds.getDate() + 7)
+        await adminClient.from('profiles').update({
+          plan: 'trial',
+          trial_ends_at: trialEnds.toISOString(),
+        }).eq('id', newUser.id)
+      }
+
       return NextResponse.redirect(
         new URL('/dashboard', requestUrl.origin)
       )
@@ -122,6 +138,13 @@ export async function GET(request: NextRequest) {
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
           )
+          const trialEnds = new Date()
+          trialEnds.setDate(trialEnds.getDate() + 7)
+          await adminClient.from('profiles').update({
+            plan: 'trial',
+            trial_ends_at: trialEnds.toISOString(),
+          }).eq('id', oauthUser.id)
+
           const userName = oauthUser.user_metadata?.full_name ?? oauthUser.email?.split('@')[0]
           await adminClient.from('onboarding_enrollments').upsert({
             user_id: oauthUser.id,

@@ -1,5 +1,6 @@
 import { MetadataRoute } from "next";
 import { posts } from "./blog/data/posts";
+import { features } from "./funkce/data";
 
 const BASE_URL = "https://www.mujcrm.cz";
 
@@ -9,6 +10,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified: new Date(post.dateISO),
     changeFrequency: "monthly" as const,
     priority: 0.8,
+  }));
+
+  const featurePages: MetadataRoute.Sitemap = features.map((f) => ({
+    url: `${BASE_URL}/funkce/${f.slug}`,
+    lastModified: new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.75,
   }));
 
   return [
@@ -25,6 +33,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     ...blogPosts,
+    ...featurePages,
     {
       url: `${BASE_URL}/auth/login`,
       lastModified: new Date(),

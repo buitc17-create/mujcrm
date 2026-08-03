@@ -29,7 +29,7 @@ export default function TrialExpiredModal({ show }: Props) {
 
         <h2 className="text-2xl font-black text-white mb-3">Bezplatná verze skončila</h2>
         <p className="text-sm leading-relaxed mb-8" style={{ color: 'rgba(237,237,237,0.55)' }}>
-          Tvoje 7denní zkušební verze Business plánu vypršela.<br/>
+          Tvoje 7denní zkušební verze MujCRM vypršela.<br/>
           Vyber si tarif a pokračuj v práci bez přerušení.
         </p>
 

@@ -5,7 +5,10 @@ import AnimatedBackground from './AnimatedBackground';
 
 export default function AnimatedBackgroundClient() {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
   if (!mounted) return null;
   return <AnimatedBackground />;
 }

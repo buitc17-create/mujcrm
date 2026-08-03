@@ -43,6 +43,7 @@ export async function POST(req: Request) {
         stripe_customer_id: session.customer as string,
         stripe_subscription_id: session.subscription as string,
         plan: planName,
+        trial_ends_at: null,
       }).eq('id', session.metadata!.userId)
 
       // Interní notifikace o novém předplatném

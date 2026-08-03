@@ -34,7 +34,7 @@ export async function GET() {
 
   const { data: profiles } = await adminClient
     .from('profiles')
-    .select('id, plan, stripe_customer_id, stripe_subscription_id, pending_plan, pending_plan_date')
+    .select('id, plan, stripe_customer_id, stripe_subscription_id, pending_plan, pending_plan_date, trial_ends_at')
 
   const profileMap = new Map((profiles ?? []).map(p => [p.id, p]))
   const paidProfiles = (profiles ?? []).filter(p => p.stripe_subscription_id)
@@ -101,6 +101,10 @@ export async function GET() {
       stripeSubscriptionId: profile?.stripe_subscription_id ?? null,
       pendingPlan: profile?.pending_plan ?? null,
       pendingPlanDate: profile?.pending_plan_date ?? null,
+      appTrialEndsAt: profile?.trial_ends_at ?? null,
+      appTrialDaysLeft: (profile?.plan === 'trial' && profile?.trial_ends_at)
+        ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at).getTime() - Date.now()) / 86400000))
+        : null,
       billingInterval: stripeSub?.interval ?? null,
       periodStart: stripeSub?.periodStart ?? null,
       periodEnd: stripeSub?.periodEnd ?? null,

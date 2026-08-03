@@ -19,6 +19,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+
+.page-root {
+  background: #0a0a0a;
+  position: relative;
+}
+
+.page-content {
+  position: relative;
+  z-index: 1;
+}
+
 @keyframes floatA {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-8px); }

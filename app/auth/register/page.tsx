@@ -40,14 +40,6 @@ export default function RegisterPage() {
     } else {
       // Pokud je user okamžitě přihlášen (auto-confirm), uložíme onboarding do DB
       if (data.user) {
-        // Nastav trial na 7 dní
-        const trialEnds = new Date();
-        trialEnds.setDate(trialEnds.getDate() + 7);
-        await supabase.from('profiles').update({
-          plan: 'trial',
-          trial_ends_at: trialEnds.toISOString(),
-        }).eq('id', data.user.id);
-
         if (onboardingAnswers) {
           await supabase.from('onboarding_answers').upsert({
             user_id: data.user.id,

@@ -12,6 +12,8 @@ export function buildMonthlyReportHtml(p: {
   lostDeals: Record<string, unknown>[];
   activeDeals: Record<string, unknown>[];
   wonValue: number;
+  wonProvize: number;
+  forecastProvize?: number;
   totalValue: number;
   newThisMonthCount: number;
   stageCounts: Record<string, number>;
@@ -151,6 +153,7 @@ export function buildMonthlyReportHtml(p: {
           <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:16px 20px;">
             <div style="font-size:11px; color:#16a34a; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Hodnota výher</div>
             <div style="font-size:22px; font-weight:800; color:#16a34a;">${p.wonValue.toLocaleString('cs-CZ')} Kč</div>
+            ${p.wonProvize > 0 ? `<div style="font-size:12px; font-weight:700; color:#b45309; margin-top:8px; padding-top:8px; border-top:1px solid #d1fae5;">Provize: ${p.wonProvize.toLocaleString('cs-CZ')} Kč</div>` : ''}
           </div>
         </td>
         <td width="50%" style="padding:0 0 0 6px;">
@@ -160,6 +163,13 @@ export function buildMonthlyReportHtml(p: {
           </div>
         </td>
       </tr>
+      ${p.forecastProvize != null && p.forecastProvize > 0 ? `
+      <tr><td colspan="2" style="padding-top:10px;">
+        <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:16px 20px;">
+          <div style="font-size:11px; color:#b45309; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Výhled provize (z otevřených zakázek)</div>
+          <div style="font-size:22px; font-weight:800; color:#d97706;">${p.forecastProvize.toLocaleString('cs-CZ')} Kč</div>
+        </div>
+      </td></tr>` : ''}
     </table>
   </td></tr>
 

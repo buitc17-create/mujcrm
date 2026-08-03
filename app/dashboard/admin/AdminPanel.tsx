@@ -13,6 +13,8 @@ interface AdminUser {
   stripeSubscriptionId: string | null;
   pendingPlan: string | null;
   pendingPlanDate: string | null;
+  appTrialEndsAt: string | null;
+  appTrialDaysLeft: number | null;
   billingInterval: 'monthly' | 'yearly' | null;
   periodStart: string | null;
   periodEnd: string | null;
@@ -24,6 +26,7 @@ interface AdminUser {
 
 const PLAN_LABELS: Record<string, string> = {
   free: 'Bez tarifu',
+  trial: 'Zkušební',
   start: 'Start',
   tym: 'Tým',
   business: 'Business',
@@ -40,6 +43,7 @@ const PLAN_OPTIONS = [
 
 const PLAN_COLORS: Record<string, string> = {
   free: 'rgba(237,237,237,0.3)',
+  trial: '#F59E0B',
   start: '#22C55E',
   tym: '#00BFFF',
   business: '#7B2FFF',
@@ -145,7 +149,8 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
     }
   }
 
-  const paidUsers = users.filter(u => u.plan !== 'free');
+  const paidUsers = users.filter(u => u.plan !== 'free' && u.plan !== 'trial');
+  const trialUsers = users.filter(u => u.plan === 'trial');
   const freeUsers = users.filter(u => u.plan === 'free');
   const monthlyUsers = paidUsers.filter(u => u.billingInterval === 'monthly');
   const yearlyUsers = paidUsers.filter(u => u.billingInterval === 'yearly');
@@ -342,8 +347,8 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
         {[
           { label: 'Celkem uživatelů', value: users.length, color: 'rgba(237,237,237,0.8)' },
           { label: 'Platící uživatelé', value: paidUsers.length, color: '#22C55E' },
+          { label: 'Ve zkušební verzi', value: trialUsers.length, color: '#F59E0B' },
           { label: 'Měsíční platby', value: monthlyUsers.length, color: '#00BFFF' },
-          { label: 'Roční platby', value: yearlyUsers.length, color: '#7B2FFF' },
         ].map(stat => (
           <div key={stat.label} className="rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
             <p className="text-xs font-medium mb-2" style={{ color: 'rgba(237,237,237,0.45)' }}>{stat.label}</p>
@@ -356,7 +361,7 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
       <div className="rounded-2xl p-5 mb-8" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
         <p className="text-xs font-semibold mb-4" style={{ color: 'rgba(237,237,237,0.45)' }}>ROZLOŽENÍ DLE TARIFU</p>
         <div className="flex flex-wrap gap-3">
-          {['start', 'tym', 'business', 'enterprise'].map(plan => {
+          {['trial', 'start', 'tym', 'business', 'enterprise'].map(plan => {
             const count = planCounts[plan] ?? 0;
             if (count === 0) return null;
             return (
@@ -472,11 +477,18 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
                   {/* Dny zdarma */}
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1">
+                      {u.plan === 'trial' && u.appTrialDaysLeft !== null && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold w-fit"
+                          style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: u.appTrialDaysLeft === 0 ? '#ef4444' : '#F59E0B' }}>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          {u.appTrialDaysLeft === 0 ? 'Expirováno' : `Zkuš. ${u.appTrialDaysLeft} dní`}
+                        </span>
+                      )}
                       {u.trialDaysLeft !== null && u.trialDaysLeft > 0 && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold w-fit"
                           style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22C55E' }}>
                           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                          Trial {u.trialDaysLeft} dní
+                          Stripe {u.trialDaysLeft} dní
                         </span>
                       )}
                       {u.discountDaysLeft !== null && u.discountDaysLeft > 0 && (
@@ -487,7 +499,7 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
                           {u.discountDaysLeft} dní
                         </span>
                       )}
-                      {!u.trialDaysLeft && !u.discountDaysLeft && (
+                      {u.plan !== 'trial' && !u.trialDaysLeft && !u.discountDaysLeft && (
                         <span style={{ color: 'rgba(237,237,237,0.25)' }}>—</span>
                       )}
                     </div>
@@ -576,7 +588,7 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
             {planFilter !== 'all' && ` · filtr: ${PLAN_LABELS[planFilter]}`}
           </p>
           <p className="text-xs" style={{ color: 'rgba(237,237,237,0.2)' }}>
-            Platící: {paidUsers.length} · Free: {freeUsers.length}
+            Platící: {paidUsers.length} · Zkušební: {trialUsers.length} · Free: {freeUsers.length}
           </p>
         </div>
       </div>

@@ -9,7 +9,7 @@ const GA_ID = "G-P9DZEWP7PX";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-  display: "swap",
+  display: "optional",
 });
 
 const BASE_URL = "https://www.mujcrm.cz";
@@ -17,7 +17,7 @@ const BASE_URL = "https://www.mujcrm.cz";
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "MujCRM – CRM systém pro české podnikatele a firmy",
+    default: "MujCRM – CRM systém pro české podnikatele a firmy v ČR",
     template: "%s | MujCRM",
   },
   description:
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
     locale: "cs_CZ",
     url: BASE_URL,
     siteName: "MujCRM",
-    title: "MujCRM – CRM systém pro české podnikatele a firmy",
+    title: "MujCRM – CRM systém pro české podnikatele a firmy v ČR",
     description:
       "Moderní CRM pro podnikatele, freelancery a malé firmy v ČR. Správa zákazníků, obchodů a týmu na jednom místě. 7 dní zdarma.",
     images: [
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "MujCRM – CRM systém pro české podnikatele a firmy",
+    title: "MujCRM – CRM systém pro české podnikatele a firmy v ČR",
     description:
       "Moderní CRM pro podnikatele, freelancery a malé firmy v ČR. 7 dní zdarma.",
     images: ["/og-image.png"],
@@ -85,7 +85,7 @@ export const metadata: Metadata = {
   },
 };
 
-const jsonLd = {
+const softwareJsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: "MujCRM",
@@ -161,6 +161,29 @@ const jsonLd = {
   },
 };
 
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "MujCRM",
+  url: BASE_URL,
+  logo: `${BASE_URL}/og-image.png`,
+  description:
+    "MujCRM je moderní CRM systém pro české podnikatele, freelancery a malé firmy. Správa zákazníků, obchodů a týmu na jednom místě.",
+  foundingDate: "2024",
+  inLanguage: "cs",
+  areaServed: {
+    "@type": "Country",
+    name: "Česká republika",
+  },
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "customer support",
+    availableLanguage: "Czech",
+    url: `${BASE_URL}/auth/register`,
+  },
+  sameAs: [BASE_URL],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -171,7 +194,11 @@ export default function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
         {/* PWA – iOS */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -181,14 +208,15 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#0a0a0a" />
       </head>
-      <body className="min-h-full flex flex-col" style={{ background: '#0a0a0a', color: '#ededed' }}>
+      <body className="min-h-full flex flex-col">
         <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
-        <Script id="ga-init" strategy="afterInteractive">{`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', '${GA_ID}', { page_path: window.location.pathname });
-        `}</Script>
+        <Script
+          id="ga-init"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}',{page_path:window.location.pathname});`,
+          }}
+        />
         {children}
         <CookieConsent />
       </body>

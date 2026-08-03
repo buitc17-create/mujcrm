@@ -21,7 +21,7 @@ export default function AnimatedBackground() {
 
     const resize = () => {
       canvas.width = window.innerWidth;
-      canvas.height = document.body.scrollHeight;
+      canvas.height = window.innerHeight;
     };
     resize();
 
@@ -51,8 +51,13 @@ export default function AnimatedBackground() {
     });
 
     let animId: number;
+    let frameCount = 0;
 
     const draw = () => {
+      animId = requestAnimationFrame(draw);
+      frameCount++;
+      if (frameCount % 2 !== 0) return; // 30 fps
+
       const w = canvas.width;
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
@@ -84,7 +89,6 @@ export default function AnimatedBackground() {
         ctx.globalAlpha = 1;
       }
 
-      animId = requestAnimationFrame(draw);
     };
 
     draw();
@@ -94,14 +98,9 @@ export default function AnimatedBackground() {
     };
     window.addEventListener('resize', handleResize);
 
-    // Re-measure height on scroll (for dynamic content)
-    const ro = new ResizeObserver(resize);
-    ro.observe(document.body);
-
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
-      ro.disconnect();
     };
   }, []);
 

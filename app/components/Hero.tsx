@@ -1,8 +1,4 @@
-'use client';
-
-import dynamic from 'next/dynamic';
-
-const Globe = dynamic(() => import('./Globe'), { ssr: false });
+import GlobeCanvas from './GlobeCanvas';
 
 const trustBadges = [
   {
@@ -85,11 +81,11 @@ export default function Hero() {
 
       {/* Globe – positioned absolutely, right-aligned and partially clipped */}
       <div
-        className="absolute top-1/2 right-[-80px] lg:right-[-120px] -translate-y-[45%] pointer-events-none"
+        className="absolute top-1/2 right-[20px] lg:right-[60px] -translate-y-[45%] pointer-events-none"
         aria-hidden="true"
         style={{ width: '560px', height: '560px', position: 'absolute' }}
       >
-        <Globe />
+        <GlobeCanvas />
 
       </div>
 

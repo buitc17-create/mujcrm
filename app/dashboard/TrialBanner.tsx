@@ -48,10 +48,10 @@ export default function TrialBanner({ plan, trialEndsAt }: Props) {
         </div>
         <div>
           <p className="text-sm font-bold text-white">
-            Business trial — zbývá {daysLeft} {daysLeft === 1 ? 'den' : daysLeft <= 4 ? 'dny' : 'dní'}
+            Zkušební verze — zbývá {daysLeft} {daysLeft === 1 ? 'den' : daysLeft <= 4 ? 'dny' : 'dní'}
           </p>
           <p className="text-xs" style={{ color: 'rgba(237,237,237,0.5)' }}>
-            {isUrgent ? 'Brzy vyprší — vyber tarif a nepřijdi o přístup.' : 'Vyzkoušej všechny funkce Business plánu zdarma.'}
+            {isUrgent ? 'Brzy vyprší — vyber tarif a nepřijdi o přístup.' : 'Vyzkoušej MujCRM zdarma a vyber si tarif až budeš připraven/a.'}
           </p>
         </div>
       </div>

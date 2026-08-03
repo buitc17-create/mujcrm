@@ -69,7 +69,7 @@ export async function POST() {
     // Zakázky přiřazené přihlášenému členovi
     const { data: allDeals } = await admin
       .from('deals')
-      .select('id, nazev, hodnota, stage_id, datum_uzavreni, pravdepodobnost, contacts(jmeno, prijmeni, firma)')
+      .select('id, nazev, hodnota, provize_castka, stage_id, datum_uzavreni, pravdepodobnost, contacts(jmeno, prijmeni, firma)')
       .eq('user_id', tm.owner_id)
       .eq('assigned_to', user.id);
 
@@ -91,7 +91,14 @@ export async function POST() {
     const activeDeals = deals.filter(d => !wonStageIds.includes(d.stage_id) && !lostStageIds.includes(d.stage_id));
 
     const wonValue   = wonDeals.reduce((s, d) => s + (d.hodnota ?? 0), 0);
+    const wonProvize = wonDeals.reduce((s, d) => s + ((d as Record<string, unknown>).provize_castka as number ?? 0), 0);
     const totalValue = activeDeals.reduce((s, d) => s + (d.hodnota ?? 0), 0);
+
+    const { data: ownerProfile } = await admin.from('profiles').select('plan').eq('id', tm.owner_id).maybeSingle();
+    const canForecast = ['tym', 'business', 'enterprise'].includes(ownerProfile?.plan ?? 'free');
+    const forecastProvize = canForecast
+      ? activeDeals.reduce((s, d) => s + ((d as Record<string, unknown>).provize_castka as number ?? 0), 0)
+      : undefined;
 
     const stageCounts: Record<string, number> = {};
     for (const d of activeDeals) {
@@ -104,10 +111,11 @@ export async function POST() {
       periodStart, periodEnd,
       stages: stages ?? [],
       deals, wonDeals, lostDeals, activeDeals,
-      wonValue, totalValue,
+      wonValue, wonProvize, totalValue,
       newThisMonthCount: newThisMonth?.length ?? 0,
       stageCounts, maxCount, stageMap,
       isOnDemand: true,
+      forecastProvize,
     });
 
     const transporter = nodemailer.createTransport({

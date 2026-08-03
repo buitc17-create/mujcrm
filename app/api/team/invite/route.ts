@@ -41,6 +41,29 @@ function inviteEmailHtml(inviteUrl: string, invitedBy: string) {
 </div>`;
 }
 
+async function sendViaSystemSmtp(toEmail: string, inviteUrl: string, invitedBy: string) {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.SYSTEM_SMTP_USER!,
+        pass: process.env.SYSTEM_SMTP_PASS!,
+      },
+    });
+    await transporter.sendMail({
+      from: `"MujCRM" <${process.env.SYSTEM_SMTP_USER}>`,
+      to: toEmail,
+      subject: 'Byl jsi pozván do MujCRM',
+      html: inviteEmailHtml(inviteUrl, invitedBy),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function sendViaOwnerSmtp(
   ownerUserId: string,
   toEmail: string,
@@ -141,25 +164,24 @@ export async function POST(request: Request) {
     redirectTo: `${origin}/auth/accept-invite`,
   };
 
-  const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
-    email.trim().toLowerCase(), inviteData
-  );
+  // Generate invite link directly — more reliable than letting Supabase send the email
+  const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+    type: 'invite',
+    email: email.trim().toLowerCase(),
+    options: { data: inviteData.data, redirectTo: inviteData.redirectTo },
+  });
 
-  if (inviteError) {
-    // Při jakékoli chybě zkus generateLink jako fallback
-    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-      type: 'invite',
-      email: email.trim().toLowerCase(),
-      options: { data: inviteData.data, redirectTo: inviteData.redirectTo },
-    });
+  if (!linkData?.properties?.action_link) {
+    console.error('generateLink error:', linkError?.message);
+    return NextResponse.json({ error: 'Nepodařilo se vygenerovat pozvánkový odkaz.' }, { status: 500 });
+  }
 
-    if (linkData?.properties?.action_link) {
-      await sendViaOwnerSmtp(user.id, email.trim().toLowerCase(), linkData.properties.action_link, ownerName, adminClient);
-    } else {
-      console.error('inviteUserByEmail error:', inviteError.message);
-      console.error('generateLink error:', linkError?.message);
-      return NextResponse.json({ error: `Nepodařilo se odeslat pozvánkový email: ${inviteError.message}` }, { status: 500 });
-    }
+  const inviteUrl = linkData.properties.action_link;
+
+  // Try owner SMTP first, fall back to system SMTP (always delivers)
+  const sentViaOwner = await sendViaOwnerSmtp(user.id, email.trim().toLowerCase(), inviteUrl, ownerName, adminClient);
+  if (!sentViaOwner) {
+    await sendViaSystemSmtp(email.trim().toLowerCase(), inviteUrl, ownerName);
   }
 
   return NextResponse.json({ success: true, member: memberRecord });

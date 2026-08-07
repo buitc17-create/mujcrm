@@ -13,11 +13,21 @@ export function buildOutreachEmailHtml(jmeno: string | null, unsubscribeToken: s
   </div>
   <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:36px;">
     <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0 0 8px;">CRM ušitý na míru realitním makléřům</h1>
-    <p style="color:rgba(237,237,237,0.6);font-size:15px;line-height:1.6;margin:0 0 24px;">${greeting} posílám krátkou nabídku — MujCRM je CRM systém postavený přímo pro realitní makléře a obchodníky.</p>
+    <p style="color:rgba(237,237,237,0.6);font-size:15px;line-height:1.6;margin:0 0 24px;">${greeting} posílám krátkou nabídku na MujCRM, CRM systém postavený přímo pro realitní makléře a obchodníky.</p>
 
     <div style="background:rgba(0,191,255,0.06);border:1px solid rgba(0,191,255,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">
       <p style="color:#00BFFF;font-weight:700;margin:0 0 6px;font-size:14px;">🏠 Leady, poptávky a zakázky na jednom místě</p>
-      <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Přehledný pipeline pro vaše zakázky, evidence poptávek klientů (investor / kupující) a jasné sledování zdroje každého leadu — včetně doporučení.</p>
+      <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Přehledný pipeline pro vaše zakázky, evidence poptávek klientů (investor / kupující) a jasné sledování zdroje každého leadu, včetně doporučení.</p>
+    </div>
+
+    <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">
+      <p style="color:#f59e0b;font-weight:700;margin:0 0 6px;font-size:14px;">✉️ Automatizace, která pracuje za vás</p>
+      <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Nastavte e-mailové sekvence, které se klientům odešlou samy v přesně daný den, a narozeninové přání navíc odejde automaticky. Ušetříte hodiny ruční práce každý týden.</p>
+    </div>
+
+    <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">
+      <p style="color:#10b981;font-weight:700;margin:0 0 6px;font-size:14px;">👥 Pracujte společně jako tým</p>
+      <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Přidejte kolegy do svého účtu, přiřazujte jim leady a zakázky a mějte přehled o výkonu celého týmu na jednom místě.</p>
     </div>
 
     <div style="background:rgba(123,47,255,0.08);border:1px solid rgba(123,47,255,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">
@@ -25,12 +35,13 @@ export function buildOutreachEmailHtml(jmeno: string | null, unsubscribeToken: s
       <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Provizi počítáte bez i s DPH, reporting vám ukáže příjmy i výhled napříč měsícem, pololetím i rokem.</p>
     </div>
 
-    <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:20px;margin-bottom:28px;">
-      <p style="color:#10b981;font-weight:700;margin:0 0 6px;font-size:14px;">⚡ 7 dní zdarma, bez karty</p>
+    <div style="background:rgba(0,191,255,0.06);border:1px solid rgba(0,191,255,0.2);border-radius:14px;padding:20px;margin-bottom:28px;">
+      <p style="color:#00BFFF;font-weight:700;margin:0 0 6px;font-size:14px;">⚡ 7 dní zdarma, bez karty</p>
       <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Vyzkoušíte naostro, se všemi funkcemi. Založení účtu trvá 2 minuty.</p>
     </div>
 
     <a href="${BASE_URL}/auth/register" style="display:block;text-align:center;background:linear-gradient(135deg,#00BFFF,#0090cc);color:#0a0a0a;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;text-decoration:none;">Vyzkoušet MujCRM zdarma →</a>
+    <p style="text-align:center;color:rgba(237,237,237,0.45);font-size:13px;line-height:1.6;margin:16px 0 0;">Víc o všech funkcích najdete na <a href="${BASE_URL}" style="color:#00BFFF;text-decoration:none;">mujcrm.cz</a>. Vyzkoušejte MujCRM stejně jako další makléři, kteří ho už dnes používají.</p>
   </div>
   <p style="text-align:center;color:rgba(237,237,237,0.25);font-size:12px;margin-top:24px;">
     MujCRM · <a href="${BASE_URL}" style="color:rgba(0,191,255,0.6);">mujcrm.cz</a>

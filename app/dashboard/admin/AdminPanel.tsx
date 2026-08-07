@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface AdminUser {
   id: string;
@@ -327,19 +328,28 @@ export default function AdminPanel({ onLogout }: { onLogout?: boolean }) {
           </div>
           <p className="text-sm" style={{ color: 'rgba(237,237,237,0.4)' }}>Správa uživatelů a předplatných napříč celou platformou.</p>
         </div>
-        {onLogout && (
-          <button
-            onClick={async () => {
-              await fetch('/api/admin/auth', { method: 'DELETE' });
-              router.push('/admin');
-              router.refresh();
-            }}
-            className="px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.5)' }}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Link
+            href="/dashboard/admin/outreach"
+            className="px-4 py-2 rounded-xl text-sm font-semibold"
+            style={{ background: 'rgba(0,191,255,0.1)', border: '1px solid rgba(0,191,255,0.25)', color: '#00BFFF' }}
           >
-            Odhlásit
-          </button>
-        )}
+            Outreach kampaň
+          </Link>
+          {onLogout && (
+            <button
+              onClick={async () => {
+                await fetch('/api/admin/auth', { method: 'DELETE' });
+                router.push('/admin');
+                router.refresh();
+              }}
+              className="px-4 py-2 rounded-xl text-sm font-semibold"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(237,237,237,0.5)' }}
+            >
+              Odhlásit
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats */}

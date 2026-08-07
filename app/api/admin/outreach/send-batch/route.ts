@@ -34,9 +34,10 @@ export async function POST(req: Request) {
 
   let sent = 0, failed = 0
   for (const r of batch) {
-    const result = await sendOutreachEmail(r.email, r.jmeno, r.unsubscribe_token)
+    const result = await sendOutreachEmail(r.email, r.jmeno, r.unsubscribe_token, 1)
     if (result.ok) {
-      await admin.from('outreach_recipients').update({ status: 'sent', sent_at: new Date().toISOString(), error: null }).eq('id', r.id)
+      const now = new Date().toISOString()
+      await admin.from('outreach_recipients').update({ status: 'sent', sequence_step: 1, sent_at: now, first_sent_at: now, error: null }).eq('id', r.id)
       sent++
     } else {
       await admin.from('outreach_recipients').update({ status: 'failed', error: result.error }).eq('id', r.id)

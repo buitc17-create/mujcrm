@@ -22,7 +22,7 @@ export async function GET() {
   const admin = getAdmin()
   const { data, error } = await admin
     .from('outreach_recipients')
-    .select('id, email, jmeno, firma, status, sent_at, error, created_at')
+    .select('id, email, jmeno, firma, status, sequence_step, sent_at, error, created_at')
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -33,6 +33,7 @@ export async function GET() {
     sent: data?.filter(r => r.status === 'sent').length ?? 0,
     failed: data?.filter(r => r.status === 'failed').length ?? 0,
     unsubscribed: data?.filter(r => r.status === 'unsubscribed').length ?? 0,
+    converted: data?.filter(r => r.status === 'converted').length ?? 0,
   }
 
   return NextResponse.json({ recipients: data ?? [], stats })

@@ -8,24 +8,25 @@ type Recipient = {
   email: string;
   jmeno: string | null;
   firma: string | null;
-  status: 'pending' | 'sent' | 'failed' | 'unsubscribed';
+  status: 'pending' | 'sent' | 'failed' | 'unsubscribed' | 'converted';
+  sequence_step: number;
   sent_at: string | null;
   error: string | null;
   created_at: string;
 };
 
-type Stats = { total: number; pending: number; sent: number; failed: number; unsubscribed: number };
+type Stats = { total: number; pending: number; sent: number; failed: number; unsubscribed: number; converted: number };
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Čeká', sent: 'Odesláno', failed: 'Chyba', unsubscribed: 'Odhlášeno',
+  pending: 'Čeká', sent: 'Odesláno', failed: 'Chyba', unsubscribed: 'Odhlášeno', converted: 'Zaregistroval se',
 };
 const STATUS_COLORS: Record<string, string> = {
-  pending: '#f59e0b', sent: '#22C55E', failed: '#ef4444', unsubscribed: 'rgba(237,237,237,0.35)',
+  pending: '#f59e0b', sent: '#22C55E', failed: '#ef4444', unsubscribed: 'rgba(237,237,237,0.35)', converted: '#00BFFF',
 };
 
 export default function OutreachPanel() {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, sent: 0, failed: 0, unsubscribed: 0 });
+  const [stats, setStats] = useState<Stats>({ total: 0, pending: 0, sent: 0, failed: 0, unsubscribed: 0, converted: 0 });
   const [loading, setLoading] = useState(true);
   const [importText, setImportText] = useState('');
   const [importing, setImporting] = useState(false);
@@ -118,11 +119,12 @@ export default function OutreachPanel() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
         {[
           { label: 'Celkem', value: stats.total, color: '#00BFFF' },
           { label: 'Čeká', value: stats.pending, color: '#f59e0b' },
           { label: 'Odesláno', value: stats.sent, color: '#22C55E' },
+          { label: 'Zaregistroval se', value: stats.converted, color: '#00BFFF' },
           { label: 'Chyba', value: stats.failed, color: '#ef4444' },
           { label: 'Odhlášeno', value: stats.unsubscribed, color: 'rgba(237,237,237,0.4)' },
         ].map((c, i) => (
@@ -154,7 +156,7 @@ export default function OutreachPanel() {
         <div>
           <p className="text-sm font-bold text-white">Odeslat další dávku</p>
           <p className="text-xs mt-0.5" style={{ color: 'rgba(237,237,237,0.45)' }}>
-            Pošle e-mail dalším 10 kontaktům se stavem &quot;Čeká&quot;. Klikni podle toho, jak rychle chceš postupovat — jednou denně to navíc pošle i automatický cron.
+            Pošle úvodní e-mail dalším 10 kontaktům se stavem &quot;Čeká&quot;. Klikni podle toho, jak rychle chceš postupovat. Denní cron navíc automaticky posílá i navazující připomínky (den 5, den 12) a zastaví je, jakmile se kontakt zaregistruje.
           </p>
         </div>
         <button onClick={handleSendBatch} disabled={sending || stats.pending === 0}
@@ -173,7 +175,7 @@ export default function OutreachPanel() {
 
       {/* Table */}
       <div className="flex items-center gap-2 mb-3">
-        {(['vse', 'pending', 'sent', 'failed', 'unsubscribed'] as const).map(f => (
+        {(['vse', 'pending', 'sent', 'converted', 'failed', 'unsubscribed'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold"
             style={{
@@ -213,6 +215,9 @@ export default function OutreachPanel() {
                     <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: STATUS_COLORS[r.status] + '18', color: STATUS_COLORS[r.status] }}>
                       {STATUS_LABELS[r.status]}
                     </span>
+                    {r.status === 'sent' && r.sequence_step > 0 && (
+                      <span className="ml-1.5 text-xs" style={{ color: 'rgba(237,237,237,0.35)' }}>krok {r.sequence_step}/3</span>
+                    )}
                     {r.error && <div className="text-xs mt-1" style={{ color: '#ef4444', maxWidth: 240 }} title={r.error}>{r.error.slice(0, 60)}</div>}
                   </td>
                   <td className="px-2 py-3 hidden md:table-cell" style={{ color: 'rgba(237,237,237,0.4)', fontSize: 12 }}>

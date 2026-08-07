@@ -22,7 +22,7 @@ export function buildTrialWarningEmailHtml(userName: string, daysLeft: number): 
       Dobrý den${userName ? `, <strong>${userName}</strong>` : ''},
     </p>
     <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.7;">
-      tvoje 7denní zkušební verze <strong>MujCRM</strong> vyprší za <strong>${daysLeft} ${daysLeft === 1 ? 'den' : 'dny'}</strong>. Aby ti nezmizel přístup k datům, vyber si tarif ještě dnes.
+      tvoje zkušební verze <strong>MujCRM</strong> vyprší za <strong>${daysLeft} ${daysLeft === 1 ? 'den' : 'dny'}</strong>. Aby ti nezmizel přístup k datům, vyber si tarif ještě dnes.
     </p>
 
     <div style="background:#fffbeb;border-radius:10px;border-left:4px solid #f59e0b;padding:16px 20px;margin-bottom:28px;">

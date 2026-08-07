@@ -22,7 +22,7 @@ export function buildTrialExpiredNotifEmailHtml(userName: string): string {
       Dobrý den${userName ? `, <strong>${userName}</strong>` : ''},
     </p>
     <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.7;">
-      tvoje 7denní zkušební verze <strong>MujCRM</strong> dnes skončila. Všechna tvá data jsou v bezpečí — stačí si vybrat tarif a pokračovat dál.
+      tvoje zkušební verze <strong>MujCRM</strong> dnes skončila. Všechna tvá data jsou v bezpečí — stačí si vybrat tarif a pokračovat dál.
     </p>
 
     <div style="background:#fef2f2;border-radius:10px;border-left:4px solid #ef4444;padding:16px 20px;margin-bottom:28px;">

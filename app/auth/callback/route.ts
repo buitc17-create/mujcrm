@@ -4,6 +4,11 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// Promo kódy pro speciální registrační odkazy (outreach kampaně) → prodloužená zkušební doba místo standardních 7 dní.
+const PROMO_TRIAL_DAYS: Record<string, number> = {
+  makler30: 37,
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
@@ -78,8 +83,10 @@ export async function GET(request: NextRequest) {
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
+        const promo = newUser.user_metadata?.promo as string | undefined
+        const trialDays = (promo && PROMO_TRIAL_DAYS[promo]) || 7
         const trialEnds = new Date()
-        trialEnds.setDate(trialEnds.getDate() + 7)
+        trialEnds.setDate(trialEnds.getDate() + trialDays)
         await adminClient.from('profiles').update({
           plan: 'trial',
           trial_ends_at: trialEnds.toISOString(),
@@ -138,8 +145,10 @@ export async function GET(request: NextRequest) {
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
           )
+          const promo = requestUrl.searchParams.get('promo') ?? undefined
+          const trialDays = (promo && PROMO_TRIAL_DAYS[promo]) || 7
           const trialEnds = new Date()
-          trialEnds.setDate(trialEnds.getDate() + 7)
+          trialEnds.setDate(trialEnds.getDate() + trialDays)
           await adminClient.from('profiles').update({
             plan: 'trial',
             trial_ends_at: trialEnds.toISOString(),

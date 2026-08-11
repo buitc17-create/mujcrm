@@ -2,108 +2,116 @@ const BASE_URL = 'https://www.mujcrm.cz'
 
 function header() {
   return `
-  <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;width:48px;height:48px;background:linear-gradient(135deg,#00BFFF,#7B2FFF);border-radius:14px;line-height:48px;font-size:22px;font-weight:900;color:#0a0a0a;text-align:center;">M</div>
-    <span style="display:inline-block;vertical-align:middle;margin-left:10px;font-size:20px;font-weight:700;color:#fff;">Muj<span style="color:#00BFFF">CRM</span></span>
-  </div>`
+  <tr><td style="background:#0a0a0a;padding:28px 40px;text-align:center;">
+    <span style="font-size:18px;font-weight:800;color:#fff;">Muj<span style="color:#00BFFF">CRM</span></span>
+  </td></tr>`
 }
 
 function footer(unsubscribeUrl: string) {
   return `
-  <p style="text-align:center;color:rgba(237,237,237,0.25);font-size:12px;margin-top:24px;">
-    MujCRM · <a href="${BASE_URL}" style="color:rgba(0,191,255,0.6);">mujcrm.cz</a>
-    &nbsp;·&nbsp;
-    <a href="${unsubscribeUrl}" style="color:rgba(237,237,237,0.35);">Už nechci dostávat tyto e-maily</a>
-  </p>`
+  <tr><td style="padding:28px 40px 8px;text-align:center;">
+    <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">
+      MujCRM · <a href="${BASE_URL}" style="color:#6b7280;">mujcrm.cz</a>
+      &nbsp;·&nbsp;
+      <a href="${unsubscribeUrl}" style="color:#9ca3af;">Už nechci dostávat tyto e-maily</a>
+    </p>
+  </td></tr>`
 }
 
 function wrap(inner: string) {
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0a0a0a;font-family:Inter,Arial,sans-serif;">
-<div style="max-width:600px;margin:0 auto;padding:40px 20px;">${inner}</div>
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:32px 16px;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+${inner}
+</table>
+</td></tr>
+</table>
 </body></html>`
+}
+
+function ctaButton(href: string, label: string) {
+  return `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0 4px;">
+      <tr><td align="center">
+        <a href="${href}" style="display:inline-block;background:#00BFFF;color:#0a0a0a;font-size:15px;font-weight:800;text-decoration:none;padding:13px 32px;border-radius:10px;">${label}</a>
+      </td></tr>
+    </table>`
 }
 
 export function buildOutreachStep1Html(jmeno: string | null, unsubscribeToken: string): string {
   const greeting = jmeno ? `Ahoj ${jmeno},` : 'Dobrý den,'
   const unsubscribeUrl = `${BASE_URL}/api/outreach/unsubscribe?token=${unsubscribeToken}`
 
-  return wrap(`
-  ${header()}
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:36px;">
-    <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0 0 8px;">CRM ušitý na míru realitním makléřům</h1>
-    <p style="color:rgba(237,237,237,0.6);font-size:15px;line-height:1.6;margin:0 0 24px;">${greeting} posílám krátkou nabídku na MujCRM, CRM systém postavený přímo pro realitní makléře a obchodníky.</p>
+  const body = `
+  <tr><td style="padding:36px 40px 8px;">
+    <p style="margin:0 0 18px;font-size:15px;color:#27272a;line-height:1.7;">${greeting}</p>
+    <p style="margin:0 0 18px;font-size:15px;color:#27272a;line-height:1.7;">jmenuji se Tomáš a postavil jsem MujCRM, systém pro realitní makléře, protože jsem viděl, že spousta z nich tráví čas vyplňováním excel tabulek a hledáním, kdy a s kým měli vlastně schůzku.</p>
+    <p style="margin:0 0 18px;font-size:15px;color:#27272a;line-height:1.7;">Většina makléřů, se kterými mluvím, řeší pořád to samé: záznamy o schůzkách rozházené po sešitech a mailech, leady, co se ztrácí, a poptávky, co nikde neeviduje.</p>
+    <p style="margin:0 0 18px;font-size:15px;color:#27272a;line-height:1.7;">Tak jsem MujCRM postavil tak, aby tohle všechno drželo pohromadě na jednom místě, v přehledném pipeline, kde vidíš každou zakázku, schůzku i poznámku k ní:</p>
 
-    <div style="background:rgba(0,191,255,0.06);border:1px solid rgba(0,191,255,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">
-      <p style="color:#00BFFF;font-weight:700;margin:0 0 6px;font-size:14px;">🏠 Leady, poptávky a zakázky na jednom místě</p>
-      <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Přehledný pipeline pro vaše zakázky, evidence poptávek klientů (investor / kupující) a jasné sledování zdroje každého leadu, včetně doporučení.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+      ${[
+        'Leady, poptávky i zakázky v přehledném pipeline',
+        'E-mailové automatizace, co pracují za tebe i o víkendu',
+        'Tým, kterému přiřadíš zakázky a uvidíš jeho výkon',
+        'Provize a reporting, co sedí bez i s DPH',
+        'Kontakty, kalendář a úkoly propojené se zakázkami, všechno na jednom místě',
+      ].map(item => `
+      <tr><td style="padding:4px 0;font-size:14px;color:#374151;line-height:1.6;">
+        <span style="color:#00BFFF;font-weight:800;margin-right:8px;">✓</span>${item}
+      </td></tr>`).join('')}
+    </table>
+
+    <div style="background:#eff8ff;border-left:3px solid #00BFFF;border-radius:8px;padding:14px 18px;">
+      <p style="margin:0;font-size:14px;color:#1e40af;line-height:1.6;">Mrkni se na to, stačí pár kliknutí a uvidíš to naostro na vlastních datech. Prvních 7 dní zdarma, bez karty.</p>
     </div>
 
-    <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">
-      <p style="color:#f59e0b;font-weight:700;margin:0 0 6px;font-size:14px;">✉️ Automatizace, která pracuje za vás</p>
-      <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Nastavte e-mailové sekvence, které se klientům odešlou samy v přesně daný den, a narozeninové přání navíc odejde automaticky. Ušetříte hodiny ruční práce každý týden.</p>
-    </div>
+    ${ctaButton(`${BASE_URL}/auth/register`, 'Vyzkoušet MujCRM zdarma →')}
 
-    <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">
-      <p style="color:#10b981;font-weight:700;margin:0 0 6px;font-size:14px;">👥 Pracujte společně jako tým</p>
-      <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Přidejte kolegy do svého účtu, přiřazujte jim leady a zakázky a mějte přehled o výkonu celého týmu na jednom místě.</p>
-    </div>
+    <p style="margin:24px 0 0;font-size:14px;color:#27272a;line-height:1.7;">Kdyby cokoliv, klidně odpověz přímo na tenhle e-mail, čtu každou zprávu osobně.</p>
+    <p style="margin:20px 0 0;font-size:14px;color:#27272a;line-height:1.5;">Tomáš<br/>MujCRM</p>
+  </td></tr>`
 
-    <div style="background:rgba(123,47,255,0.08);border:1px solid rgba(123,47,255,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">
-      <p style="color:#a78bfa;font-weight:700;margin:0 0 6px;font-size:14px;">💰 Provize a reporting</p>
-      <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Provizi počítáte bez i s DPH, reporting vám ukáže příjmy i výhled napříč měsícem, pololetím i rokem.</p>
-    </div>
-
-    <div style="background:rgba(0,191,255,0.06);border:1px solid rgba(0,191,255,0.2);border-radius:14px;padding:20px;margin-bottom:28px;">
-      <p style="color:#00BFFF;font-weight:700;margin:0 0 6px;font-size:14px;">⚡ 7 dní zdarma, bez karty</p>
-      <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Vyzkoušíte naostro, se všemi funkcemi. Založení účtu trvá 2 minuty.</p>
-    </div>
-
-    <a href="${BASE_URL}/auth/register" style="display:block;text-align:center;background:linear-gradient(135deg,#00BFFF,#0090cc);color:#0a0a0a;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;text-decoration:none;">Vyzkoušet MujCRM zdarma →</a>
-    <p style="text-align:center;color:rgba(237,237,237,0.45);font-size:13px;line-height:1.6;margin:16px 0 0;">Víc o všech funkcích najdete na <a href="${BASE_URL}" style="color:#00BFFF;text-decoration:none;">mujcrm.cz</a>. Vyzkoušejte MujCRM stejně jako další makléři, kteří ho už dnes používají.</p>
-  </div>
-  ${footer(unsubscribeUrl)}`)
+  return wrap(header() + body + footer(unsubscribeUrl))
 }
 
 export function buildOutreachStep2Html(jmeno: string | null, unsubscribeToken: string): string {
   const greeting = jmeno ? `Ahoj ${jmeno},` : 'Dobrý den,'
   const unsubscribeUrl = `${BASE_URL}/api/outreach/unsubscribe?token=${unsubscribeToken}`
 
-  return wrap(`
-  ${header()}
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:36px;">
-    <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0 0 8px;">Ještě jste nezkusili MujCRM? 👋</h1>
-    <p style="color:rgba(237,237,237,0.6);font-size:15px;line-height:1.6;margin:0 0 24px;">${greeting} minulý týden jsem vám psal o MujCRM, CRM systému postaveném přímo pro realitní makléře. Nevím, jestli se zpráva neztratila ve schránce, tak jen krátce připomínám hlavní výhodu.</p>
+  const body = `
+  <tr><td style="padding:36px 40px 8px;">
+    <p style="margin:0 0 18px;font-size:15px;color:#27272a;line-height:1.7;">${greeting}</p>
+    <p style="margin:0 0 18px;font-size:15px;color:#27272a;line-height:1.7;">minulý týden jsem ti psal o systému pro makléře MujCRM. Nevím, jestli se ti to nezaválelo někde v poště, tak jen krátce připomínám.</p>
+    <p style="margin:0 0 18px;font-size:15px;color:#27272a;line-height:1.7;">Je to systém, kam si makléři dají leady, poptávky, zakázky i provize, a nemusí k tomu už žádný excel ani rozházené poznámky.</p>
+    <p style="margin:0 0 4px;font-size:15px;color:#27272a;line-height:1.7;">Pokud tě to zajímá, klikni a zkus si to na 7 dní zdarma, bez karty:</p>
 
-    <div style="background:rgba(0,191,255,0.06);border:1px solid rgba(0,191,255,0.2);border-radius:14px;padding:20px;margin-bottom:28px;">
-      <p style="color:#00BFFF;font-weight:700;margin:0 0 6px;font-size:14px;">🏠 Vše na jednom místě</p>
-      <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Leady, poptávky, zakázky, provize i reporting v jedné přehledné appce, bez tabulek a papírování. Navíc s automatizací a možností přidat celý tým.</p>
-    </div>
+    ${ctaButton(`${BASE_URL}/auth/register`, 'Vyzkoušet MujCRM zdarma →')}
 
-    <a href="${BASE_URL}/auth/register" style="display:block;text-align:center;background:linear-gradient(135deg,#00BFFF,#0090cc);color:#0a0a0a;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;text-decoration:none;">Vyzkoušet MujCRM zdarma →</a>
-    <p style="text-align:center;color:rgba(237,237,237,0.45);font-size:13px;line-height:1.6;margin:16px 0 0;">Víc o všech funkcích najdete na <a href="${BASE_URL}" style="color:#00BFFF;text-decoration:none;">mujcrm.cz</a>.</p>
-  </div>
-  ${footer(unsubscribeUrl)}`)
+    <p style="margin:24px 0 0;font-size:14px;color:#27272a;line-height:1.5;">Tomáš<br/>MujCRM</p>
+  </td></tr>`
+
+  return wrap(header() + body + footer(unsubscribeUrl))
 }
 
 export function buildOutreachStep3Html(jmeno: string | null, unsubscribeToken: string): string {
   const greeting = jmeno ? `Ahoj ${jmeno},` : 'Dobrý den,'
   const unsubscribeUrl = `${BASE_URL}/api/outreach/unsubscribe?token=${unsubscribeToken}`
 
-  return wrap(`
-  ${header()}
-  <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:36px;">
-    <h1 style="color:#fff;font-size:22px;font-weight:800;margin:0 0 8px;">Poslední připomínka 🙂</h1>
-    <p style="color:rgba(237,237,237,0.6);font-size:15px;line-height:1.6;margin:0 0 24px;">${greeting} tohle je poslední e-mail, který vám k MujCRM pošlu. Možná bylo standardních 7 dní na pořádné vyzkoušení málo, tak přidávám 30 dní navíc.</p>
+  const body = `
+  <tr><td style="padding:36px 40px 8px;">
+    <p style="margin:0 0 18px;font-size:15px;color:#27272a;line-height:1.7;">${greeting}</p>
+    <p style="margin:0 0 18px;font-size:15px;color:#27272a;line-height:1.7;">tohle je poslední e-mail, co ti k MujCRM pošlu. Možná bylo 7 dní na pořádné vyzkoušení málo, tak ti přidávám 30 dní navíc.</p>
+    <p style="margin:0 0 4px;font-size:15px;color:#27272a;line-height:1.7;">Přes tenhle odkaz se ti při registraci automaticky nastaví 37 dní zkušební doby místo 7, bez karty:</p>
 
-    <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:14px;padding:20px;margin-bottom:28px;">
-      <p style="color:#10b981;font-weight:700;margin:0 0 6px;font-size:14px;">🎁 37 dní zdarma jen pro vás</p>
-      <p style="color:rgba(237,237,237,0.55);font-size:13px;margin:0;">Přes tenhle odkaz se vám při registraci automaticky prodlouží zkušební doba na celých 37 dní, bez karty. Ať máte dost času vyzkoušet si to naostro na vlastních zakázkách.</p>
-    </div>
+    ${ctaButton(`${BASE_URL}/auth/register?promo=makler30`, 'Vyzkoušet MujCRM na 37 dní zdarma →')}
 
-    <a href="${BASE_URL}/auth/register?promo=makler30" style="display:block;text-align:center;background:linear-gradient(135deg,#00BFFF,#0090cc);color:#0a0a0a;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;text-decoration:none;">Vyzkoušet MujCRM na 37 dní zdarma →</a>
-    <p style="text-align:center;color:rgba(237,237,237,0.45);font-size:13px;line-height:1.6;margin:16px 0 0;">Kdykoliv později se na vše ostatní podíváte na <a href="${BASE_URL}" style="color:#00BFFF;text-decoration:none;">mujcrm.cz</a>.</p>
-  </div>
-  ${footer(unsubscribeUrl)}`)
+    <p style="margin:24px 0 0;font-size:14px;color:#27272a;line-height:1.7;">Kdyby tě to nezajímalo, žádný problém, víc už se ozývat nebudu.</p>
+    <p style="margin:20px 0 0;font-size:14px;color:#27272a;line-height:1.5;">Tomáš<br/>MujCRM</p>
+  </td></tr>`
+
+  return wrap(header() + body + footer(unsubscribeUrl))
 }
 
 const SUBJECTS: Record<1 | 2 | 3, string> = {

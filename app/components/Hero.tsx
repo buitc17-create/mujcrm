@@ -106,7 +106,7 @@ export default function Hero() {
               className="w-1.5 h-1.5 rounded-full animate-pulse"
               style={{ background: '#00BFFF' }}
             />
-            Jednoduchý CRM pro podnikatele a malé firmy
+            CRM pro realitní makléře a obchodníky
           </div>
 
           {/* Headline */}
@@ -114,7 +114,7 @@ export default function Hero() {
             className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] mb-5 animate-fade-in-up-d1"
             style={{ color: '#ffffff' }}
           >
-            Tvůj byznys si zaslouží{' '}
+            Realitní byznys si zaslouží{' '}
             <span className="gradient-text">systém.</span>
           </h1>
 
@@ -123,9 +123,9 @@ export default function Hero() {
             className="text-lg sm:text-xl leading-relaxed mb-8 max-w-lg animate-fade-in-up-d2"
             style={{ color: 'rgba(237,237,237,0.6)' }}
           >
-            Zákazníci, obchody i tým přehledně na jednom místě.{' '}
+            Leady, poptávky, zakázky i provize přehledně na jednom místě.{' '}
             <span style={{ color: 'rgba(237,237,237,0.85)' }}>
-              Konečně bez chaosu.
+              Konečně bez excelu a rozházených poznámek.
             </span>
           </p>
 

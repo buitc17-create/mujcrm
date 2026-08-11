@@ -4,26 +4,62 @@ import { useState } from 'react';
 
 const tabs = [
   {
-    id: 'podnikatel',
-    label: 'Podnikatel',
+    id: 'makler',
+    label: 'Realitní makléř',
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M12 12v4"/><path d="M8 12h8"/>
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>
       </svg>
     ),
-    headline: 'Přehled celého byznysu na jednom místě',
-    desc: 'Jako podnikatel žongluješ s desítkami věcí najednou. MujCRM ti dá kompletní přehled — zákazníci, obchody, příjmy a úkoly vždy po ruce.',
+    headline: 'Zakázky, poptávky i klienti přehledně na jednom místě',
+    desc: 'Žádné excel tabulky ani rozházené poznámky ze schůzek. MujCRM ti drží pipeline zakázek, poptávky klientů i kontakty pohromadě.',
     bullets: [
-      'Přehledný dashboard s klíčovými metrikami',
-      'Pipeline obchodů od prvního kontaktu po podpis',
-      'Správa zákazníků a kompletní historie komunikace',
-      'Reporty a analytika pro lepší rozhodování',
+      'Přehledný pipeline zakázek od kontaktu po podpis',
+      'Evidence poptávek klientů (investor / kupující) a co hledají',
+      'Sledování zdroje každého leadu, včetně doporučení',
+      'Provize s výpočtem bez i s DPH',
     ],
     accent: '#00BFFF',
   },
   {
-    id: 'zamestnavatel',
-    label: 'Zaměstnavatel',
+    id: 'obchodnik',
+    label: 'Obchodník',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+      </svg>
+    ),
+    headline: 'Víc uzavřených obchodů, míň administrativy',
+    desc: 'Sleduj každý lead od prvního kontaktu až po podpis, automatizuj follow-upy a měj přehled, co skutečně funguje.',
+    bullets: [
+      'Kanban pipeline pro obchody a leady',
+      'E-mailové automatizace a sekvence follow-upů',
+      'Reporting a výhled příjmů podle období',
+      'Import kontaktů z vlastní tabulky',
+    ],
+    accent: '#7B2FFF',
+  },
+  {
+    id: 'poradce',
+    label: 'Finanční poradce',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1.4 1.1-2.5 2.5-2.5s2.5.7 2.5 2c0 2-5 1.5-5 3.5 0 1.3 1.1 2 2.5 2s2.5-1.1 2.5-2.5"/>
+      </svg>
+    ),
+    headline: 'Klienti a doporučení pod kontrolou',
+    desc: 'Evidence klientů, sledování doporučení a automatické připomínky, ať ti žádný follow-up neproklouzne mezi prsty.',
+    bullets: [
+      'Evidence klientů a historie komunikace',
+      'Sledování zdroje leadu a doporučitele',
+      'Automatické e-mailové sekvence a připomínky',
+      'Přehledné reporty pro klientská jednání',
+    ],
+    accent: '#00BFFF',
+  },
+  {
+    id: 'vedouci',
+    label: 'Vedoucí týmu',
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -31,7 +67,7 @@ const tabs = [
       </svg>
     ),
     headline: 'Přiřaď práci a měj přehled',
-    desc: 'Přiřaď zákazníky a obchody konkrétním členům týmu. Každý ví, co má na starosti, a ty dostaneš automatický měsíční výkaz výkonu každého člena.',
+    desc: 'Přiřaď zákazníky a zakázky konkrétním členům týmu. Každý ví, co má na starosti, a ty dostaneš automatický měsíční výkaz výkonu každého člena.',
     bullets: [
       'Přiřazení zakázek a leadů konkrétním členům týmu',
       'Pozvání členů a správa přístupových rolí',
@@ -40,46 +76,10 @@ const tabs = [
     ],
     accent: '#7B2FFF',
   },
-  {
-    id: 'zamestnanec',
-    label: 'Zaměstnanec',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-      </svg>
-    ),
-    headline: 'Vždy víš co máš dělat a kdy',
-    desc: 'Jasné úkoly, přehledná komunikace a žádné překvapení. Soustřeď se na práci, ne na hledání informací.',
-    bullets: [
-      'Osobní seznam úkolů a připomínek',
-      'Přehled svých zákazníků a obchodů',
-      'Historie komunikace vždy dostupná',
-      'Notifikace na důležité termíny a změny',
-    ],
-    accent: '#00BFFF',
-  },
-  {
-    id: 'freelancer',
-    label: 'Freelancer',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-      </svg>
-    ),
-    headline: 'Profesionální péče o klienty bez asistentky',
-    desc: 'Pracuješ sám, ale chceš působit jako firma. MujCRM ti pomůže nezapomínat na klienty, termíny ani faktury.',
-    bullets: [
-      'Evidence klientů a projektů na jednom místě',
-      'Sledování stavu každého projektu a platby',
-      'Připomínky k follow-upům a termínům',
-      'Jednoduché reporty pro daňové přiznání',
-    ],
-    accent: '#7B2FFF',
-  },
 ];
 
 export default function ForWho() {
-  const [active, setActive] = useState('podnikatel');
+  const [active, setActive] = useState('makler');
   const tab = tabs.find(t => t.id === active)!;
 
   return (

@@ -17,21 +17,22 @@ const BASE_URL = "https://www.mujcrm.cz";
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "MujCRM – CRM systém pro české podnikatele a firmy v ČR",
+    default: "MujCRM – CRM systém pro realitní makléře a obchodníky",
     template: "%s | MujCRM",
   },
   description:
-    "MujCRM je moderní CRM systém pro podnikatele, freelancery a malé firmy v České republice. Správa zákazníků, obchodů a týmu na jednom místě. Vyzkoušejte zdarma.",
+    "MujCRM je CRM systém postavený pro realitní makléře, obchodníky a finanční poradce. Leady, poptávky, zakázky i provize bez i s DPH na jednom místě. 7 dní zdarma.",
   keywords: [
+    "CRM pro realitní makléře",
+    "CRM pro realitní kancelář",
+    "software pro makléře",
+    "CRM pro obchodníky",
+    "CRM pro finanční poradce",
+    "realitní CRM",
+    "evidence poptávek",
     "CRM systém",
-    "CRM pro podnikatele",
-    "správa zákazníků",
     "CRM česky",
-    "CRM pro malé firmy",
-    "CRM freelancer",
     "obchodní pipeline",
-    "správa kontaktů",
-    "CRM software česká republika",
     "crm zdarma",
   ],
   authors: [{ name: "Tomáš Vydra" }],
@@ -57,23 +58,23 @@ export const metadata: Metadata = {
     locale: "cs_CZ",
     url: BASE_URL,
     siteName: "MujCRM",
-    title: "MujCRM – CRM systém pro české podnikatele a firmy v ČR",
+    title: "MujCRM – CRM systém pro realitní makléře a obchodníky",
     description:
-      "Moderní CRM pro podnikatele, freelancery a malé firmy v ČR. Správa zákazníků, obchodů a týmu na jednom místě. 7 dní zdarma.",
+      "CRM postavený pro realitní makléře, obchodníky a finanční poradce. Leady, poptávky, zakázky i provize na jednom místě. 7 dní zdarma.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "MujCRM – CRM systém pro české firmy",
+        alt: "MujCRM – CRM systém pro realitní makléře a obchodníky",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MujCRM – CRM systém pro české podnikatele a firmy v ČR",
+    title: "MujCRM – CRM systém pro realitní makléře a obchodníky",
     description:
-      "Moderní CRM pro podnikatele, freelancery a malé firmy v ČR. 7 dní zdarma.",
+      "CRM postavený pro realitní makléře, obchodníky a finanční poradce. 7 dní zdarma.",
     images: ["/og-image.png"],
   },
   other: {
@@ -94,10 +95,10 @@ const softwareJsonLd = {
   operatingSystem: "Web",
   inLanguage: "cs",
   description:
-    "Moderní CRM systém pro české podnikatele, freelancery a malé firmy. Správa zákazníků, obchodů a týmu na jednom místě.",
+    "MujCRM je CRM systém navržený speciálně pro realitní makléře, obchodníky a finanční poradce v České republice. Obsahuje evidenci leadů, poptávek klientů a zakázek v přehledném pipeline, výpočet provize bez i s DPH, e-mailové automatizace a nástroje pro řízení obchodního týmu.",
   audience: {
     "@type": "Audience",
-    audienceType: "Podnikatelé, freelanceři, malé a střední firmy",
+    audienceType: "Realitní makléři, obchodníci, finanční poradci, vedoucí obchodních týmů",
     geographicArea: {
       "@type": "Country",
       name: "Česká republika",
@@ -145,11 +146,14 @@ const softwareJsonLd = {
     },
   ],
   featureList: [
-    "Správa zákazníků a kontaktů",
-    "Obchodní pipeline (Kanban)",
-    "Týmová spolupráce",
-    "Import z CSV",
-    "Reporty a analytika",
+    "Pipeline zakázek a leadů (Kanban)",
+    "Evidence poptávek klientů (investor / kupující)",
+    "Sledování zdroje leadu a doporučitele",
+    "Výpočet provize bez i s DPH",
+    "E-mailové automatizace a follow-upy",
+    "Týmová spolupráce a výkazy výkonu",
+    "Import kontaktů z CSV",
+    "Reporty a analytika příjmů",
     "GDPR compliant",
   ],
   screenshot: `${BASE_URL}/og-image.png`,
@@ -168,7 +172,7 @@ const organizationJsonLd = {
   url: BASE_URL,
   logo: `${BASE_URL}/og-image.png`,
   description:
-    "MujCRM je moderní CRM systém pro české podnikatele, freelancery a malé firmy. Správa zákazníků, obchodů a týmu na jednom místě.",
+    "MujCRM je CRM systém pro realitní makléře, obchodníky a finanční poradce v České republice. Pomáhá jim spravovat leady, poptávky, zakázky, provize a obchodní tým na jednom místě.",
   foundingDate: "2024",
   inLanguage: "cs",
   areaServed: {

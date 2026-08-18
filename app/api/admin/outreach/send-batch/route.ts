@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
-import { verifyAdminToken } from '@/lib/adminAuth'
+import { isAuthorizedAdmin } from '@/lib/adminAuth'
 import { sendOutreachEmail } from '@/lib/outreachEmail'
 
 function getAdmin() {
@@ -14,9 +13,7 @@ function getAdmin() {
 const BATCH_SIZE = 10
 
 export async function POST(req: Request) {
-  const cookieStore = await cookies()
-  const token = cookieStore.get('admin_token')?.value
-  if (!token || !verifyAdminToken(token)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!(await isAuthorizedAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => ({}))
   const batchSize = Number(body?.batchSize) || BATCH_SIZE

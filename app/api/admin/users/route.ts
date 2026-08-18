@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { stripe } from '@/lib/stripe'
 import { PLANS } from '@/lib/stripe-config'
-import { verifyAdminToken } from '@/lib/adminAuth'
-import { cookies } from 'next/headers'
+import { isAuthorizedAdmin } from '@/lib/adminAuth'
 
 function getBillingInterval(priceId: string): 'monthly' | 'yearly' | null {
   for (const plan of Object.values(PLANS)) {
@@ -18,9 +17,7 @@ function daysLeft(unixTs: number): number {
 }
 
 export async function GET() {
-  const cookieStore = await cookies()
-  const token = cookieStore.get('admin_token')?.value
-  if (!token || !verifyAdminToken(token)) {
+  if (!(await isAuthorizedAdmin())) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

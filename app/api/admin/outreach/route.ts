@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
-import { verifyAdminToken } from '@/lib/adminAuth'
+import { isAuthorizedAdmin } from '@/lib/adminAuth'
 
 function getAdmin() {
   return createAdminClient(
@@ -10,14 +9,8 @@ function getAdmin() {
   )
 }
 
-async function requireAdmin() {
-  const cookieStore = await cookies()
-  const token = cookieStore.get('admin_token')?.value
-  return !!token && verifyAdminToken(token)
-}
-
 export async function GET() {
-  if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!(await isAuthorizedAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const admin = getAdmin()
   const { data, error } = await admin
@@ -40,7 +33,7 @@ export async function GET() {
 }
 
 export async function DELETE(req: Request) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!(await isAuthorizedAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { id } = await req.json()
   if (!id) return NextResponse.json({ error: 'Chybí id' }, { status: 400 })

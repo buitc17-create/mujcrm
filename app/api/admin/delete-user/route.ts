@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
-import { verifyAdminToken } from '@/lib/adminAuth'
+import { isAuthorizedAdmin } from '@/lib/adminAuth'
 import { stripe } from '@/lib/stripe'
 import nodemailer from 'nodemailer'
 import { buildAccountDeletedEmailHtml } from '@/lib/accountDeletedEmailHtml'
 
 export async function DELETE(req: NextRequest) {
-  const cookieStore = await cookies()
-  const token = cookieStore.get('admin_token')?.value
-  if (!token || !verifyAdminToken(token)) {
+  if (!(await isAuthorizedAdmin())) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
